@@ -2,8 +2,9 @@ package main
 
 // History :
 // 2019/09/10 :  tag 0.1 - compiling.
-// 2019/09/10 :  tag 0.1 - deployed
-// 2019/09/10 :  tag 0.3 - +pid,whitelist/blacklist
+// 2019/09/12 :  tag 0.1 - deployed
+// 2019/09/13 :  tag 0.3 - +pid,whitelist/blacklist
+// 2019/09/13 :  tag 0.4 - +correction bug SUM (cast)
 //
 
 import (
@@ -167,7 +168,7 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	// db.Exec("START TRANSACTION")
 
-	sumerr := db.QueryRow("SELECT SUM(recipient_count) FROM events where sasl_username=? and ts<TIME(DATE_SUB(NOW(), INTERVAL 1 DAY))", xdata.saslUsername).Scan(&dbSum)
+	sumerr := db.QueryRow("SELECT SUM(recipient_count) FROM events WHERE sasl_username=? AND ts>DATE_SUB(CAST(NOW() as DATETIME(3)), INTERVAL 1 DAY)", xdata.saslUsername).Scan(&dbSum)
 
 	if sumerr != nil { // Pas normal, l'erreur noRow.
 		// xlog.Err("Erreur apres SUM " + sumerr.Error())

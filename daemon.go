@@ -18,7 +18,7 @@ var (
 )
 
 func initSyslog(exe string) {
-	e error
+	var e error
 	xlog, e = syslog.New(syslog.LOG_DAEMON|syslog.LOG_INFO, exe)
 	if e == nil {
 		log.SetOutput(xlog)

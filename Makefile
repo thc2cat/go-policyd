@@ -5,3 +5,5 @@ dtest:
 
 REMOTE_DESTINATION=root@smtps.uvsq.fr:/local/bin/
 
+do-release:	${NAME}-${TAG}
+	scp ${NAME}-${TAG} ${REMOTE_DESTINATION}

@@ -94,3 +94,40 @@ Nettoyage:
 
 MariaDB [policyd]> SELECT * FROM events where  ts>TIME(DATE_SUB(NOW(), INTERVAL 1 DAY));
 Empty set (0.001 sec)
+
+
+MariaDB [policyd]> SELECT * FROM events where  ts<SUBDATE(cast(now() as datetime(3)), INTERVAL 1 DAY) ORDER by ts DESC LIMIT 10  ;
++-------------------------+---------------+----------------------------+----------------+-----------------+
+| ts                      | sasl_username | sender                     | client_address | recipient_count |
++-------------------------+---------------+----------------------------+----------------+-----------------+
+| 2019-09-12 17:09:37.159 | yoandemo      | yoann.demoli@uvsq.fr       | 209.85.210.173 |               1 |
+| 2019-09-12 17:09:31.061 | bartcagn      | barthelemy.cagneau@uvsq.fr | 37.167.151.167 |               1 |
+| 2019-09-12 17:09:24.499 | laurdalm      | laurent.dalmas@uvsq.fr     | 193.51.42.208  |               2 |
+| 2019-09-12 17:09:12.923 | domibart      | dominique.barth@uvsq.fr    | 193.51.25.166  |               1 |
+| 2019-09-12 17:08:50.358 | sylcheva      | sylvain.chevallier@uvsq.fr | 88.161.114.135 |               1 |
+| 2019-09-12 17:08:41.449 | domibart      | dominique.barth@uvsq.fr    | 193.51.25.166  |               5 |
+| 2019-09-12 17:08:40.119 | fredgont      | frederique.gontran@uvsq.fr | 92.184.105.61  |               1 |
+| 2019-09-12 17:07:56.734 | nadilepo      | nadine.lepontois@uvsq.fr   | 192.168.8.89   |               1 |
+| 2019-09-12 17:07:46.779 | vincsech      | secherre@math.uvsq.fr      | 193.51.32.208  |               1 |
+| 2019-09-12 17:07:26.909 | jeanhuct      | jean-michel.huctin@uvsq.fr | 93.22.151.2    |               5 |
++-------------------------+---------------+----------------------------+----------------+-----------------+
+10 rows in set (0.001 sec)
+
+Ceux qu'il faut donc compter : 
+
+MariaDB [policyd]> select  sasl_username, SUM(recipient_count) AS total  from events where  ts>SUBDATE(cast(now() as datetime(3)), INTERVAL 1 DAY) GROUP BY sasl_username ORDER BY total DESC LIMIT 10;
++---------------+-------+
+| sasl_username | total |
++---------------+-------+
+| pabdeoli      |   223 |
+| quenbeda      |   164 |
+| nahiemad      |   156 |
+| nicosauv      |   145 |
+| louigoub      |   122 |
+| laurvint      |   110 |
+| delpsitt      |   109 |
+| laurwill      |   102 |
+| jeanemil      |    97 |
+| caromend      |    96 |
++---------------+-------+
+10 rows in set (0.011 sec)
