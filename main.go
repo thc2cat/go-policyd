@@ -2,6 +2,8 @@ package main
 
 // History :
 // 2019/09/10 :  tag 0.1 - compiling.
+// 2019/09/10 :  tag 0.1 - deployed
+// 2019/09/10 :  tag 0.3 - +pid,whitelist/blacklist
 //
 
 import (
@@ -9,11 +11,15 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type connData struct {
@@ -24,21 +30,24 @@ type connData struct {
 }
 
 var (
-	xdebug *bool
-	xmutex sync.Mutex
+	xdebug       *bool
+	xmutex       sync.Mutex
+	defaultQuota int64
 )
 
-func init() {
-	xdebug = flag.Bool("debug", false, "enable debugging")
-}
+const cfgfile = "/etc/postfix/policyd.cfg"
 
 func main() {
-	InitCfg()
+
+	InitCfg(cfgfile)
+	xdebug = flag.Bool("debug", false, "enable debugging")
 	flag.Parse()
+	defaultQuota, _ = strconv.ParseInt(cfg["defaultquota"], 0, 64)
+
 	if !*xdebug {
 		daemon(0, 0)
 	} else {
-		fmt.Println("Starting in debug mode")
+		fmt.Println("Starting in foreground mode")
 	}
 	// Listen for incoming connections.
 	l, err := net.Listen("tcp", cfg["bind"]+":"+cfg["port"])
@@ -48,15 +57,13 @@ func main() {
 	}
 	defer l.Close()
 
-	// open connection to the database
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?autocommit=false", cfg["dbuser"], cfg["dbpass"], cfg["dbhost"], cfg["dbport"], cfg["dbname"]))
+	initSyslog("policyd")
+
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@/%s", cfg["dbuser"], cfg["dbpass"], cfg["dbname"]))
 	if err != nil {
-		fmt.Println("ERROR CONNECTING MYSQL")
-		os.Exit(1)
+		log.Panic(err)
 	}
 	defer db.Close()
-
-	initSyslog()
 
 	for {
 		// Listen for an incoming connection.
@@ -65,7 +72,6 @@ func main() {
 			xlog.Err("Error accepting: " + err.Error())
 			os.Exit(1)
 		}
-		// Handle connections in a new goroutine.
 		go handleRequest(conn, db)
 	}
 }
@@ -73,6 +79,10 @@ func main() {
 // Handles incoming requests.
 func handleRequest(conn net.Conn, db *sql.DB) {
 	var xdata connData
+
+	// fmt.Println("->Entering handleRequest")
+	// defer fmt.Println("<-Exiting handleRequest")
+
 	reader := bufio.NewReader(conn)
 	for {
 		s, err := reader.ReadString('\n')
@@ -87,7 +97,7 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 		}
 		vv := strings.SplitN(s, "=", 2)
 		if len(vv) < 2 {
-			fmt.Println("Error processing line")
+			xlog.Err("Error processing line" + s)
 			continue
 		}
 		// if (*xdebug) { fmt.Println("..", s, ":", vv[0],"->",vv[1]) }
@@ -104,93 +114,97 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 			xdata.recipientCount = vv[1]
 		}
 	}
-	db.Ping()
-	db.Exec("set time_zone='+00:00'") // timezone UTC
-	db.Exec("set session TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+
 	resp := policyVerify(xdata, db)
 	conn.Write([]byte(fmt.Sprintf("action=%s\n\n", resp)))
 	conn.Close()
+
 }
 
 func policyVerify(xdata connData, db *sql.DB) string {
 
-	var defaultQuota, dbSum float64
+	var dbSum int64
 
-	if blacklisted(xdata) {
+	// fmt.Println("->Entering policyVerify")
+	// defer fmt.Println("<-Exiting policyVerify")
+
+	switch {
+	case xdata.saslUsername == "" || xdata.sender == "" || xdata.clientAddress == "":
+		return "REJECT missing infos"
+	case blacklisted(xdata):
 		return "HOLD blacklisted"
-	}
-	if whitelisted(xdata) {
+	case whitelisted(xdata):
 		return "DUNNO"
 	}
 
-	if xdata.saslUsername == "" || xdata.sender == "" || xdata.clientAddress == "" {
-		return "REJECT missing infos"
-	}
-
-	defaultQuota, _ = strconv.ParseFloat(cfg["defaultquota"], 64)
-	rcpt, _ := strconv.ParseFloat(xdata.recipientCount, 64)
+	// rcpt, _ := strconv.ParseFloat(xdata.recipientCount, 64)
+	rcpt, _ := strconv.ParseInt(xdata.recipientCount, 0, 64)
 
 	xmutex.Lock()
 	defer xmutex.Unlock()
 
-	defer db.Exec("COMMIT") //defer db.Exec("COMMIT; UNLOCK TABLES;")
-	db.Exec("START TRANSACTION")
+	db.Ping()
+	defer db.Exec("COMMMIT")
 
-	// err := db.QueryRow("SELECT max, quota, unix_timestamp(ts), unix_timestamp(now()) FROM "+cfg["policy_table"]+" where type=? and item=? FOR UPDATE", xtype, xitem).Scan(&mx, &quota, &ts, &sNow)
-	err := db.QueryRow("SELECT SUM(rcpt_count) FROM events where sasl_username=? and ts>TIME(DATE_SUB(NOW(), INTERVAL 1 DAY)) FOR UPDATE", xdata.saslUsername).Scan(&dbSum)
-	switch {
-
-	// Creation d'une entree  :
-	case err == sql.ErrNoRows:
-		if *xdebug {
-			fmt.Println("NOT FOUND")
-		}
-		xlog.Info("New entry for username " + xdata.saslUsername + " +" + xdata.recipientCount)
-
-		_, err = db.Exec("INSERT INTO events set ts=now(), sasl_username=?, sender=?, client_address=?, recipient_count=?",
-			xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount)
-		if err != nil {
-			xlog.Err(err.Error())
-			if *xdebug {
-				fmt.Println("ERROR INSERTING:", err.Error())
-			}
-		}
-
-		// J'ai une erreur ???
-	case err != nil:
-		xlog.Err("ERROR: " + err.Error())
-		return "DUNNO"
-	default:
-		if *xdebug {
-			fmt.Printf("FOUND for (%s) : %f recipients\n", xdata.saslUsername, dbSum)
-		}
-
-	}
-
-	if dbSum+rcpt > defaultQuota {
-		xlog.Info(fmt.Sprintf("DEFERRING overquota (%v>%v) for user %s using %s from ip [%s]", dbSum, defaultQuota, xdata.saslUsername, xdata.sender, xdata.clientAddress))
-		return "HOLD quota exceeded"
-	}
-
-	// Still there ? ok. Add new entry
-	_, err = db.Exec("INSERT INTO events set ts=now(), sasl_username=?, sender=?, client_address=?, recipient_count=?",
-		xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount)
-	if err != nil {
-		xlog.Err(err.Error())
-		if *xdebug {
-			fmt.Println("ERROR UPDATING:", err.Error())
-		}
-	}
-	xlog.Info(fmt.Sprintf("Updating events for user (%s) using <%s> from ip [%s] for %s recipients",
+	//  Add new entry first, ensuring correct SUM
+	xlog.Info(fmt.Sprintf("Updating db: %s/%s/%s/%s",
 		xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount))
 
-	return "DUNNO" // not OK so we can pipe more checks in postfix
+	// db.Exec("set time_zone='+00:00'") // timezone UTC
+	// db.Exec("set SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED ")
+	// db.Exec("START TRANSACTION")
 
+	_, err := db.Exec("INSERT INTO events SET sasl_username=?, sender=?, client_address=?, recipient_count=?",
+		xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount)
+	if err != nil {
+		xlog.Err("ERROR while UPDATING db :" + err.Error())
+		time.Sleep(3 * time.Second) // Mutex + delay = secure mysql primary key
+		xlog.Info("Rate limiting similar requests, sleeping for a few secs...")
+	}
+
+	// db.Exec("COMMMIT")
+	// db.Exec("set SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED ")
+
+	// db.Exec("START TRANSACTION")
+
+	sumerr := db.QueryRow("SELECT SUM(recipient_count) FROM events where sasl_username=? and ts<TIME(DATE_SUB(NOW(), INTERVAL 1 DAY))", xdata.saslUsername).Scan(&dbSum)
+
+	if sumerr != nil { // Pas normal, l'erreur noRow.
+		// xlog.Err("Erreur apres SUM " + sumerr.Error())
+		// fmt.Printf("%v %s", sumerr, sumerr)
+		// lets consider it's a new entry.
+		// when message is  "converting NULL to int64 is unsupported"
+		dbSum = 0
+	}
+
+	if *xdebug {
+		fmt.Printf("SELECT SUM Found %s: %v recipients\n", xdata.saslUsername, dbSum)
+	}
+
+	switch {
+	case dbSum+rcpt >= 2*defaultQuota:
+		xlog.Info(fmt.Sprintf("REJECTING overquota (%v>2x%v) for user %s using %s from ip [%s]",
+			dbSum+rcpt, defaultQuota, xdata.saslUsername, xdata.sender, xdata.clientAddress))
+		return "REJECT max quota exceeded"
+
+	case dbSum+rcpt >= defaultQuota:
+		xlog.Info(fmt.Sprintf("DEFERRING overquota (%v>%v) for user %s using %s from ip [%s]",
+			dbSum+rcpt, defaultQuota, xdata.saslUsername, xdata.sender, xdata.clientAddress))
+		return "HOLD quota exceeded"
+	default:
+		return "DUNNO" // do not send OK, so we can pipe more checks in postfix
+	}
 }
 
 func whitelisted(xdata connData) bool {
+	if inwhitelist[xdata.saslUsername] || inwhitelist[xdata.sender] || inwhitelist[xdata.clientAddress] {
+		return true
+	}
 	return false
 }
 func blacklisted(xdata connData) bool {
+	if inblacklist[xdata.saslUsername] || inblacklist[xdata.sender] || inblacklist[xdata.clientAddress] {
+		return true
+	}
 	return false
 }

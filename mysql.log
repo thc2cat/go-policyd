@@ -1,0 +1,96 @@
+MariaDB [policyd]> show tables;
++-------------------+
+| Tables_in_policyd |
++-------------------+
+| events            |
++-------------------+
+1 row in set (0.00 sec)
+
+MariaDB [policyd]> describe events;
++-----------------+-----------+------+-----+-------------------+-----------------------------+
+| Field           | Type      | Null | Key | Default           | Extra                       |
++-----------------+-----------+------+-----+-------------------+-----------------------------+
+| ts              | timestamp | NO   | PRI | CURRENT_TIMESTAMP | on update CURRENT_TIMESTAMP |
+| sasl_username   | char(8)   | NO   | PRI |                   |                             |
+| sender          | char(80)  | NO   | PRI |                   |                             |
+| client_address  | char(80)  | NO   |     |                   |                             |
+| recipient_count | int(6)    | YES  |     | NULL              |                             |
++-----------------+-----------+------+-----+-------------------+-----------------------------+
+5 rows in set (0.00 sec)
+
+MariaDB [policyd]> select * from events;
+Empty set (0.00 sec)
+
+MariaDB [policyd]> insert into events (sasl_username,sender,client_address,recipient_count) VALUES("thiecail","thierry.caillet@uvsq.fr","127.0.0.1",1);
+Query OK, 1 row affected (0.00 sec)
+
+MariaDB [policyd]> select * from events;
++---------------------+---------------+-------------------------+----------------+-----------------+
+| ts                  | sasl_username | sender                  | client_address | recipient_count |
++---------------------+---------------+-------------------------+----------------+-----------------+
+| 2019-09-11 15:10:08 | thiecail      | thierry.caillet@uvsq.fr | 127.0.0.1      |               1 |
++---------------------+---------------+-------------------------+----------------+-----------------+
+1 row in set (0.00 sec)
+
+MariaDB [policyd]> insert into events (sasl_username,sender,client_address,recipient_count) VALUES("thiecail","thierry.caillet@uvsq.fr","127.0.0.1",5);
+Query OK, 1 row affected (0.01 sec)
+
+MariaDB [policyd]> select * from events;
++---------------------+---------------+-------------------------+----------------+-----------------+
+| ts                  | sasl_username | sender                  | client_address | recipient_count |
++---------------------+---------------+-------------------------+----------------+-----------------+
+| 2019-09-11 15:10:08 | thiecail      | thierry.caillet@uvsq.fr | 127.0.0.1      |               1 |
+| 2019-09-11 15:10:35 | thiecail      | thierry.caillet@uvsq.fr | 127.0.0.1      |               5 |
++---------------------+---------------+-------------------------+----------------+-----------------+
+2 rows in set (0.00 sec)
+MariaDB [policyd]> select SUM(recipient_count)  from events WHERE sasl_username='thiecail';
++----------------------+
+| SUM(recipient_count) |
++----------------------+
+|                    6 |
++----------------------+
+1 row in set (0.00 sec)
+
+MariaDB [policyd]> SHOW VARIABLES LIKE "%autocommit%";
++------------------------+-------+
+| Variable_name          | Value |
++------------------------+-------+
+| autocommit             | ON    |
+| wsrep_retry_autocommit | 1     |
++------------------------+-------+
+2 rows in set (0.004 sec)
+
+
+PRODUCTION : 
+
+MariaDB [policyd]> select  sasl_username, SUM(recipient_count) AS total  from events GROUP BY sasl_username ORDER BY total DESC LIMIT 10;
++---------------+-------+
+| sasl_username | total |
++---------------+-------+
+| florarma      |   152 |
+| domibart      |    91 |
+| caromend      |    68 |
+| nellnadj      |    60 |
+| delpsitt      |    58 |
+| louigoub      |    57 |
+| delpfran      |    54 |
+| laurwill      |    48 |
+| fabigira      |    45 |
+| frangoxe      |    44 |
++---------------+-------+
+10 rows in set (0.004 sec)
+
+
+MariaDB [policyd]> show processlist;
++----+----------------+-----------------+---------+---------+------+-------+------------------+----------+
+| Id | User           | Host            | db      | Command | Time | State | Info             | Progress |
++----+----------------+-----------------+---------+---------+------+-------+------------------+----------+
+| 12 | policyd_daemon | localhost       | policyd | Query   |    0 | Init  | show processlist |    0.000 |
+| 29 | policyd_daemon | localhost:59746 | policyd | Sleep   |    2 |       | NULL             |    0.000 |
++----+----------------+-----------------+---------+---------+------+-------+------------------+----------+
+2 rows in set (0.000 sec)
+
+Nettoyage:
+
+MariaDB [policyd]> SELECT * FROM events where  ts>TIME(DATE_SUB(NOW(), INTERVAL 1 DAY));
+Empty set (0.001 sec)

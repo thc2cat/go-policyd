@@ -7,16 +7,19 @@ import (
 	"strings"
 )
 
-const cfgfile = "/usr/local/etc/polka.cf"
-
 var cfg map[string]string
+var inblacklist map[string]bool
+var inwhitelist map[string]bool
 
-// InitCfg read polka.cf
-func InitCfg() {
+// InitCfg read cfgfile variable
+func InitCfg(s string) {
 	cfg = make(map[string]string)
-	f, err := os.Open(cfgfile)
+	inblacklist = make(map[string]bool)
+	inwhitelist = make(map[string]bool)
+
+	f, err := os.Open(s)
 	if err != nil {
-		panic(fmt.Sprintf("Unable to read configuration file %s", cfgfile))
+		panic(fmt.Sprintf("Unable to read configuration file %s", s))
 	}
 	defer f.Close()
 	rd := bufio.NewReader(f)
@@ -30,6 +33,13 @@ func InitCfg() {
 		if len(vv) < 2 {
 			continue
 		}
-		cfg[vv[0]] = vv[1]
+		switch {
+		case vv[0] == "blacklist":
+			inblacklist[vv[1]] = true
+		case vv[0] == "whitelist":
+			inwhitelist[vv[1]] = true
+		default:
+			cfg[vv[0]] = vv[1]
+		}
 	}
 }
