@@ -131,3 +131,13 @@ MariaDB [policyd]> select  sasl_username, SUM(recipient_count) AS total  from ev
 | caromend      |    96 |
 +---------------+-------+
 10 rows in set (0.011 sec)
+
+
+MariaDB [policyd]> select DISTINCT(sender) from events where ( client_address NOT LIKE "193.51%" ) AND (sender NOT LIKE "%uvsq.fr%" ) ORDER by ts DESC LIMIT 20   ; 
++--------------------------------+
+| sender                         |
++--------------------------------+
+| louis.goubin@cryptoexperts.com |
+| louis.goubin@goubin.fr         |
++--------------------------------+
+2 rows in set (0.009 sec)
