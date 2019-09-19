@@ -8,7 +8,9 @@ package main
 // 2019/09/16 :  tag 0.5 - +dbClean
 // 2019/09/17 :  tag 0.6 - cut saslUsername@uvsq.fr
 // 2019/09/19 :  tag 0.61 - more logs for whitelist/blacklist
+//                       - auto version with git tag
 //
+// TODO : with context for DB blackout.
 
 import (
 	"bufio"
@@ -37,11 +39,13 @@ var (
 	xdebug       *bool
 	xmutex       sync.Mutex
 	defaultQuota int64
+
+	// Version is git tag version exported by Makefile, printed by -debug
+	Version string
 )
 
 const (
 	cfgfile = "/etc/postfix/policyd.cfg"
-	version = "v0.6"
 )
 
 func main() {
@@ -54,7 +58,7 @@ func main() {
 	if !*xdebug {
 		daemon(0, 0)
 	} else {
-		fmt.Printf("Starting %s in foreground mode\n", version)
+		fmt.Printf("Starting %s in foreground mode\n", Version)
 	}
 	// Listen for incoming connections.
 	l, err := net.Listen("tcp", cfg["bind"]+":"+cfg["port"])
@@ -140,7 +144,8 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 		}
 	}
 
-	resp := policyVerify(xdata, db)
+	resp := policyVerify(xdata, db) // Here, where the magic happen
+
 	conn.Write([]byte(fmt.Sprintf("action=%s\n\n", resp)))
 	conn.Close()
 }
