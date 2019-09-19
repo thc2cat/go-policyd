@@ -5,6 +5,9 @@ package main
 // 2019/09/12 :  tag 0.1 - deployed
 // 2019/09/13 :  tag 0.3 - +pid,whitelist/blacklist
 // 2019/09/13 :  tag 0.4 - +correction bug SUM (cast)
+// 2019/09/16 :  tag 0.5 - +dbClean
+// 2019/09/17 :  tag 0.6 - cut saslUsername@uvsq.fr
+// 2019/09/19 :  tag 0.61 - more logs for whitelist/blacklist
 //
 
 import (
@@ -36,7 +39,10 @@ var (
 	defaultQuota int64
 )
 
-const cfgfile = "/etc/postfix/policyd.cfg"
+const (
+	cfgfile = "/etc/postfix/policyd.cfg"
+	version = "v0.6"
+)
 
 func main() {
 
@@ -48,7 +54,7 @@ func main() {
 	if !*xdebug {
 		daemon(0, 0)
 	} else {
-		fmt.Println("Starting in foreground mode")
+		fmt.Printf("Starting %s in foreground mode\n", version)
 	}
 	// Listen for incoming connections.
 	l, err := net.Listen("tcp", cfg["bind"]+":"+cfg["port"])
@@ -66,6 +72,8 @@ func main() {
 	}
 	defer db.Close()
 
+	go dbClean(db)
+
 	for {
 		// Listen for an incoming connection.
 		conn, err := l.Accept()
@@ -74,6 +82,18 @@ func main() {
 			os.Exit(1)
 		}
 		go handleRequest(conn, db)
+	}
+}
+
+func dbClean(db *sql.DB) {
+	for {
+		xmutex.Lock()
+		db.Ping()
+		// Keep 7 days in db
+		db.Exec("DELETE from events where  ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
+		xmutex.Unlock()
+		// Clean every day
+		time.Sleep(24 * time.Hour)
 	}
 }
 
@@ -106,7 +126,11 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 		vv[1] = strings.Trim(vv[1], " \n\r")
 		switch vv[0] {
 		case "sasl_username":
-			xdata.saslUsername = vv[1]
+			if strings.IndexByte(vv[1], '@') == -1 {
+				xdata.saslUsername = vv[1]
+			} else {
+				xdata.saslUsername = vv[1][:strings.IndexByte(vv[1], '@')]
+			}
 		case "sender":
 			xdata.sender = vv[1]
 		case "client_address":
@@ -119,7 +143,6 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 	resp := policyVerify(xdata, db)
 	conn.Write([]byte(fmt.Sprintf("action=%s\n\n", resp)))
 	conn.Close()
-
 }
 
 func policyVerify(xdata connData, db *sql.DB) string {
@@ -130,11 +153,20 @@ func policyVerify(xdata connData, db *sql.DB) string {
 	// defer fmt.Println("<-Exiting policyVerify")
 
 	switch {
+	case len(xdata.saslUsername) > 8:
+		xlog.Info(fmt.Sprintf("REJECT saslUsername too long : %s ",
+			xdata.saslUsername))
+		return "REJECT saslUsername too long"
+
 	case xdata.saslUsername == "" || xdata.sender == "" || xdata.clientAddress == "":
 		return "REJECT missing infos"
 	case blacklisted(xdata):
+		xlog.Info(fmt.Sprintf("HOLD blacklisted user : %s ",
+			xdata.saslUsername))
 		return "HOLD blacklisted"
 	case whitelisted(xdata):
+		xlog.Info(fmt.Sprintf("DUNNO Whitelisted user : %s ",
+			xdata.saslUsername))
 		return "DUNNO"
 	}
 
@@ -168,7 +200,7 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	// db.Exec("START TRANSACTION")
 
-	sumerr := db.QueryRow("SELECT SUM(recipient_count) FROM events WHERE sasl_username=? AND ts>DATE_SUB(CAST(NOW() as DATETIME(3)), INTERVAL 1 DAY)", xdata.saslUsername).Scan(&dbSum)
+	sumerr := db.QueryRow("SELECT SUM(recipient_count) FROM events WHERE sasl_username=? AND ts>DATE_SUB(CURRENT_TIMESTAMP(3), INTERVAL 1 DAY)", xdata.saslUsername).Scan(&dbSum)
 
 	if sumerr != nil { // Pas normal, l'erreur noRow.
 		// xlog.Err("Erreur apres SUM " + sumerr.Error())
