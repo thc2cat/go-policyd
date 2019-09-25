@@ -7,7 +7,7 @@ type myXlog int
 
 var xlog myXlog
 
-func (myXlog) Err(string)         {}
-func (myXlog) Info(string)        {}
-func daemon(nochdir, noclose int) {}
-func initSyslog(s string)         {}
+func (myXlog) Err(string)   {}
+func (myXlog) Info(string)  {}
+func initSyslog(s string)   {}
+func writePidfile(s string) {}
