@@ -1,4 +1,4 @@
-> CREATE USER 'policyd_daemon'@'localhost' IDENTIFIED BY '9JZ7TkdZFEG3SoZF';
+> CREATE USER 'policyd_daemon'@'localhost' IDENTIFIED BY 'yourChoiceOfPassword';
 Query OK, 0 rows affected (0.01 sec)
 
 > CREATE DATABASE policyd;

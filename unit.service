@@ -1,0 +1,15 @@
+[Unit]
+Description=Policyd go daemon for Postfix
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/local/bin/policyd
+
+[Install]
+WantedBy=multi-user.target
+
+# systemctl enable /local/etc/policyd.service
+# systemctl daemon-reload
+# systemctl start policyd.service
+# systemctl status  policyd.service
