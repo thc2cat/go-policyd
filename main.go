@@ -11,6 +11,7 @@ package main
 //                       - auto version with git tag
 // 2019/09/23 :  tag 0.63 - log DBSUM too, suppress debug output.
 // 2019/09/25 : tag 0.7 - no more daemon/debug
+// 2019/09/27 : tag 0.72 - bug dbSum
 //
 // TODO : with context for DB blackout.
 
@@ -204,12 +205,12 @@ func policyVerify(xdata connData, db *sql.DB) string {
 		xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount, dbSum))
 
 	switch {
-	case dbSum+rcpt >= 2*defaultQuota:
+	case dbSum >= 2*defaultQuota:
 		xlog.Info(fmt.Sprintf("REJECTING overquota (%v>2x%v) for user %s using %s from ip [%s]",
 			dbSum+rcpt, defaultQuota, xdata.saslUsername, xdata.sender, xdata.clientAddress))
 		return "REJECT max quota exceeded"
 
-	case dbSum+rcpt >= defaultQuota:
+	case dbSum >= defaultQuota:
 		xlog.Info(fmt.Sprintf("DEFERRING overquota (%v>%v) for user %s using %s from ip [%s]",
 			dbSum+rcpt, defaultQuota, xdata.saslUsername, xdata.sender, xdata.clientAddress))
 		return "HOLD quota exceeded"

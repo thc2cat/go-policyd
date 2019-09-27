@@ -2,14 +2,16 @@
 
 Le but du projet est d'avoir un démon capable de limiter le nombre d'envois de mail par utilisateur authentifié.
 
-Un petit outil à été développé sur la base d'un démon existant : https://github.com/SimoneLazzaris/polka 
+Un petit outil à été développé sur la base d'un démon policyd existant : [polka](https://github.com/SimoneLazzaris/polka)
 
-Il consiste en un démon recevant les datas de postfix policyd, et emmetant la réponse DUNNO (continuer)/HOLD (conserver)/REJECT (rejeter) suivant le nombre de destinataires de mails par jour.
+Il consiste en un démon utilisant les chiffres de  "policy postfix" , et emmet la réponse DUNNO (continuer)/HOLD (conserver)/REJECT (rejeter) suivant le nombre de destinataires de mails par jour.
+
+### Wiki : [systeme:logiciel:postfix#postfix_policyd_helper](http://wiki.dsi.uvsq.fr/systeme:logiciel:postfix#postfix_policyd_helper)
 
 ### Fonctionnalités: 
-  - Stockage dans une base LDAP des évenements policyd
-  - comparaision de SUM journalieres par rapport au quota max(1500).
-  - conservation des 1500 destinataires suivants.
+  - Stockage dans une base MYSQL(mariadb) des évenements policyd
+  - vérification du nombre total de destinataires sur 24h par rapport au quota max(1500).
+  - conservation des mails pour les 1500 destinataires suivants ( analyse SPAM, requeue avant whitelisting ).
   - rejet a partir de 2x quota max (3000)
 
 
@@ -35,7 +37,7 @@ smtpd_end_of_data_restrictions = check_policy_service inet:127.0.0.1:9093
 
 ## Lancement du démon via systemd
 ```
-Recopier postfixpolicyd.service dans /local/etc/policyd.service, puis
+Recopier unit.service dans /local/etc/policyd.service, puis
 
 # systemctl enable /local/etc/policyd.service
 # systemctl daemon-reload
@@ -47,6 +49,7 @@ Recopier postfixpolicyd.service dans /local/etc/policyd.service, puis
 ## SGBD mariadb 
 
 La table stockant les évenements d'emission postfix est construite de la maniere suivante: 
+
 ```
 > CREATE USER 'policyd_daemon'@'localhost' IDENTIFIED BY 'yourChoiceOfPassword';
 Query OK, 0 rows affected (0.01 sec)
@@ -70,7 +73,7 @@ Query OK, 0 rows affected (0.00 sec)
 
 Un outil utilisant les datas de la table events permets de sortir le top20 des usagers ( **policyd-top20.sh**)
 
-
+** Note ** : 
 On utilise un DATETIME(3) pour éviter les collisions de clefs lors d'enregistrements rapprochés.
 Le nettoyage des enregistrements plus vieux de 7 jours est fait quotidiennement toutes les 24 heures.
 
