@@ -66,7 +66,7 @@ func main() {
 
 	initSyslog(syslogtag)
 
-	xlog.Info(fmt.Sprintf("%s %s started.", syslogtag, Version))
+	xlog.Info(fmt.Sprintf("%s started.", Version))
 	writePidfile("/var/run/" + syslogtag + ".pid")
 
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@/%s", cfg["dbuser"], cfg["dbpass"], cfg["dbname"]))
