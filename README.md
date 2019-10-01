@@ -1,10 +1,13 @@
+[![Build Status](https://git.dsi.uvsq.fr/thiecail/policyd/badges/master/build.svg)](https://git.dsi.uvsq.fr/thiecail/policyd/commits/master)
+
+
 # policyd(go) : Postfix Policyd Rate limiter 
 
 Le but du projet est d'avoir un démon capable de limiter le nombre d'envois de mail par utilisateur authentifié.
 
 Un petit outil à été développé sur la base d'un démon policyd existant : [polka](https://github.com/SimoneLazzaris/polka)
 
-Il consiste en un démon utilisant les chiffres de  "policy postfix" , et emmet la réponse DUNNO (continuer)/HOLD (conserver)/REJECT (rejeter) suivant le nombre de destinataires de mails par jour.
+Il consiste en un démon utilisant les chiffres de  "policy postfix" , et émet la réponse DUNNO (continuer)/HOLD (conserver)/REJECT (rejeter) suivant le nombre de destinataires de mails par jour.
 
 ### Wiki : [systeme:logiciel:postfix#postfix_policyd_helper](http://wiki.dsi.uvsq.fr/systeme:logiciel:postfix#postfix_policyd_helper)
 

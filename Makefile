@@ -9,6 +9,10 @@ GOLDFLAGS += -X main.Version=${NAME}-${TAG}
 GOFLAGS = -ldflags "$(GOLDFLAGS)"
 
 release:	${NAME}-${TAG}
+	goupx -9 ${NAME}-${TAG}
 
 do-release:	${NAME}-${TAG}
 	scp ${NAME}-${TAG} ${REMOTE_DESTINATION}
+
+changelog:
+	gitchangelog > Changelog
