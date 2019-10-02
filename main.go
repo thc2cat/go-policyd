@@ -12,6 +12,7 @@ package main
 // 2019/09/23 :  tag 0.63 - log DBSUM too, suppress debug output.
 // 2019/09/25 : tag 0.7 - no more daemon/debug
 // 2019/09/27 : tag 0.72 - bug dbSum
+// 0.73 : show version when args are given
 //
 // TODO : with context for DB blackout.
 
@@ -51,6 +52,11 @@ const (
 )
 
 func main() {
+
+	if len(os.Args) > 1 {
+		fmt.Printf("Usage: %s (as daemon)", syslogtag)
+		os.Exit(0)
+	}
 
 	InitCfg(cfgfile)
 

@@ -1,18 +1,14 @@
 include ../make/Makefile-for-go.mk
 
-dtest:
-	nc localhost 9093 < tests/test.data
 
 REMOTE_DESTINATION=root@smtps.uvsq.fr:/local/bin/
 
-GOLDFLAGS += -X main.Version=${NAME}-${TAG}
-GOFLAGS = -ldflags "$(GOLDFLAGS)"
+NAME= $(notdir $(shell pwd))
+TAG=$(shell git tag)
 
-release:	${NAME}-${TAG}
-	goupx -9 ${NAME}-${TAG}
+build:
+	 go build -ldflags '-w -s -X main.Version=${NAME}-${TAG}' -o ${NAME}-${TAG}
 
-do-release:	${NAME}-${TAG}
-	scp ${NAME}-${TAG} ${REMOTE_DESTINATION}
+dep:
+	dep ensure --update
 
-changelog:
-	gitchangelog > Changelog

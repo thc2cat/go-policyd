@@ -1,0 +1,9 @@
+stages: 
+ - build
+
+ build:
+  stage: build
+  image: golang:alpine3.6
+  before_script:
+  script:
+    - go build -o policyd
