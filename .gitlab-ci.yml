@@ -11,5 +11,4 @@ build:
     - go get github.com/golang/dep/cmd/dep
     - dep ensure
     - mkdir build
-    - CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o build/$BINARY_NAME ./...
-    - go build -o policyd
+    - go build -o build/policyd
