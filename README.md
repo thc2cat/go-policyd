@@ -1,5 +1,4 @@
-[![Build Status](https://git.dsi.uvsq.fr/thiecail/policyd/badges/master/build.svg)](https://git.dsi.uvsq.fr/thiecail/policyd/commits/master)
-
+[![pipeline status](https://git.dsi.uvsq.fr/thiecail/policyd/badges/deployed/pipeline.svg)](https://git.dsi.uvsq.fr/thiecail/policyd/commits/deployed)
 
 # policyd(go) : Postfix Policyd Rate limiter 
 
