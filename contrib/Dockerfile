@@ -4,7 +4,8 @@ RUN apk add --no-cache git curl
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 COPY . /go/src/app
 RUN /go/bin/dep ensure --update
-RUN go build -o /go/bin/policyd
+RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o /go/bin/policyd
+
 
 FROM scratch
 LABEL MAINTER=thierry.caillet@uvsq.fr

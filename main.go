@@ -13,6 +13,7 @@ package main
 // 2019/09/25 : tag 0.7 - no more daemon/debug
 // 2019/09/27 : tag 0.72 - bug dbSum
 // 0.73 : show version when args are given
+// 0.74 : more infos for white/blacklisted
 //
 // TODO : with context for DB blackout.
 
@@ -168,12 +169,12 @@ func policyVerify(xdata connData, db *sql.DB) string {
 	case xdata.saslUsername == "" || xdata.sender == "" || xdata.clientAddress == "":
 		return "REJECT missing infos"
 	case blacklisted(xdata):
-		xlog.Info(fmt.Sprintf("HOLD blacklisted user : %s ",
-			xdata.saslUsername))
+		xlog.Info(fmt.Sprintf("HOLD blacklisted user : %s/%s/%s/%s",
+			xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount))
 		return "HOLD blacklisted"
 	case whitelisted(xdata):
-		xlog.Info(fmt.Sprintf("DUNNO Whitelisted user : %s ",
-			xdata.saslUsername))
+		xlog.Info(fmt.Sprintf("DUNNO Whitelisted user : %s/%s/%s/%s",
+			xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount))
 		return "DUNNO"
 	}
 
