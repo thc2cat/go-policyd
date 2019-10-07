@@ -169,11 +169,11 @@ func policyVerify(xdata connData, db *sql.DB) string {
 	case xdata.saslUsername == "" || xdata.sender == "" || xdata.clientAddress == "":
 		return "REJECT missing infos"
 	case blacklisted(xdata):
-		xlog.Info(fmt.Sprintf("HOLD blacklisted user : %s/%s/%s/%s",
+		xlog.Info(fmt.Sprintf("Holding blacklisted user : %s/%s/%s/%s",
 			xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount))
 		return "HOLD blacklisted"
 	case whitelisted(xdata):
-		xlog.Info(fmt.Sprintf("DUNNO Whitelisted user : %s/%s/%s/%s",
+		xlog.Info(fmt.Sprintf("skipping whitelisted user : %s/%s/%s/%s",
 			xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount))
 		return "DUNNO"
 	}
