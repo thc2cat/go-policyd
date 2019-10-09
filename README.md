@@ -37,6 +37,11 @@ Ajouter dans /etc/postfix/main.cf :
 smtpd_end_of_data_restrictions = check_policy_service inet:127.0.0.1:9093
 ```
 
+## Whitelisting
+
+Le whitelisting est permis durant les heures de travail ( 7h-19h , en dehors des WE ).
+Une entrée blacklistée est permanente.
+
 ## Lancement du démon via systemd
 ```
 Recopier unit.service dans /local/etc/policyd.service, puis

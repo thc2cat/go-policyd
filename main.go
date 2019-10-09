@@ -14,6 +14,7 @@ package main
 // 2019/09/27 : tag 0.72 - bug dbSum
 // 0.73 : show version when args are given
 // 0.74 : more infos for white/blacklisted
+// 0.75 : whitelisted only during workinghours, and not weekend
 //
 // TODO : with context for DB blackout.
 
@@ -76,7 +77,8 @@ func main() {
 	xlog.Info(fmt.Sprintf("%s started.", Version))
 	writePidfile("/var/run/" + syslogtag + ".pid")
 
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@/%s", cfg["dbuser"], cfg["dbpass"], cfg["dbname"]))
+	db, err := sql.Open("mysql",
+		fmt.Sprintf("%s:%s@/%s", cfg["dbuser"], cfg["dbpass"], cfg["dbname"]))
 	if err != nil {
 		log.Panic(err)
 	}
@@ -100,7 +102,8 @@ func dbClean(db *sql.DB) {
 		xmutex.Lock()
 		db.Ping()
 		// Keep 7 days in db
-		db.Exec("DELETE from " + cfg["policy_table"] + " where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
+		db.Exec("DELETE from " + cfg["policy_table"] +
+			" where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
 		xmutex.Unlock()
 		// Clean every day
 		time.Sleep(24 * time.Hour)
@@ -160,7 +163,18 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	var dbSum int64
 
+	// Block WeekEnd or out of office hours
+	var officehours, weekend bool
+
+	if h, _, _ := time.Now().Clock(); h >= 7 && h <= 19 {
+		officehours = true
+	}
+	if d := int(time.Now().Weekday()); d == 7 || d == 0 {
+		weekend = true
+	}
+
 	switch {
+
 	case len(xdata.saslUsername) > 8:
 		xlog.Info(fmt.Sprintf("REJECT saslUsername too long : %s ",
 			xdata.saslUsername))
@@ -168,17 +182,21 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	case xdata.saslUsername == "" || xdata.sender == "" || xdata.clientAddress == "":
 		return "REJECT missing infos"
+
 	case blacklisted(xdata):
 		xlog.Info(fmt.Sprintf("Holding blacklisted user : %s/%s/%s/%s",
-			xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount))
+			xdata.saslUsername, xdata.sender, xdata.clientAddress,
+			xdata.recipientCount))
 		return "HOLD blacklisted"
-	case whitelisted(xdata):
+
+	case officehours && !weekend && whitelisted(xdata):
 		xlog.Info(fmt.Sprintf("skipping whitelisted user : %s/%s/%s/%s",
-			xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount))
+			xdata.saslUsername, xdata.sender, xdata.clientAddress,
+			xdata.recipientCount))
 		return "DUNNO"
 	}
 
-	rcpt, _ := strconv.ParseInt(xdata.recipientCount, 0, 64)
+	// rcpt, _ := strconv.ParseInt(xdata.recipientCount, 0, 64)
 
 	xmutex.Lock() // Use mutex because dbcleaning may occur at the same time.
 	defer xmutex.Unlock()
@@ -191,7 +209,8 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	defer db.Exec("COMMMIT")
 
-	_, err := db.Exec("INSERT INTO "+cfg["policy_table"]+" SET sasl_username=?, sender=?, client_address=?, recipient_count=?",
+	_, err := db.Exec("INSERT INTO "+cfg["policy_table"]+
+		" SET sasl_username=?, sender=?, client_address=?, recipient_count=?",
 		xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount)
 	if err != nil {
 		xlog.Err("ERROR while UPDATING db :" + err.Error())
@@ -199,7 +218,9 @@ func policyVerify(xdata connData, db *sql.DB) string {
 		xlog.Info("Rate limiting similar requests, sleeping for a few secs...")
 	}
 
-	sumerr := db.QueryRow("SELECT SUM(recipient_count) FROM "+cfg["policy_table"]+" WHERE sasl_username=? AND ts>DATE_SUB(CURRENT_TIMESTAMP(3), INTERVAL 1 DAY)", xdata.saslUsername).Scan(&dbSum)
+	sumerr := db.QueryRow("SELECT SUM(recipient_count) FROM "+cfg["policy_table"]+
+		" WHERE sasl_username=? AND ts>DATE_SUB(CURRENT_TIMESTAMP(3), INTERVAL 1 DAY)",
+		xdata.saslUsername).Scan(&dbSum)
 
 	if sumerr != nil { // Pas normal, l'erreur noRow.
 		// lets consider it's a new entry.
@@ -209,17 +230,20 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	//  Add new entry first, ensuring correct SUM
 	xlog.Info(fmt.Sprintf("Updating db: %s/%s/%s/%s/%v",
-		xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount, dbSum))
+		xdata.saslUsername, xdata.sender, xdata.clientAddress,
+		xdata.recipientCount, dbSum))
 
 	switch {
 	case dbSum >= 2*defaultQuota:
 		xlog.Info(fmt.Sprintf("REJECTING overquota (%v>2x%v) for user %s using %s from ip [%s]",
-			dbSum+rcpt, defaultQuota, xdata.saslUsername, xdata.sender, xdata.clientAddress))
+			dbSum, defaultQuota, xdata.saslUsername, xdata.sender,
+			xdata.clientAddress))
 		return "REJECT max quota exceeded"
 
 	case dbSum >= defaultQuota:
 		xlog.Info(fmt.Sprintf("DEFERRING overquota (%v>%v) for user %s using %s from ip [%s]",
-			dbSum+rcpt, defaultQuota, xdata.saslUsername, xdata.sender, xdata.clientAddress))
+			dbSum, defaultQuota, xdata.saslUsername, xdata.sender,
+			xdata.clientAddress))
 		return "HOLD quota exceeded"
 
 	default:
@@ -228,13 +252,17 @@ func policyVerify(xdata connData, db *sql.DB) string {
 }
 
 func whitelisted(xdata connData) bool {
-	if inwhitelist[xdata.saslUsername] || inwhitelist[xdata.sender] || inwhitelist[xdata.clientAddress] {
+	if inwhitelist[xdata.saslUsername] ||
+		inwhitelist[xdata.sender] ||
+		inwhitelist[xdata.clientAddress] {
 		return true
 	}
 	return false
 }
 func blacklisted(xdata connData) bool {
-	if inblacklist[xdata.saslUsername] || inblacklist[xdata.sender] || inblacklist[xdata.clientAddress] {
+	if inblacklist[xdata.saslUsername] ||
+		inblacklist[xdata.sender] ||
+		inblacklist[xdata.clientAddress] {
 		return true
 	}
 	return false
