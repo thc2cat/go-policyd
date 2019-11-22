@@ -100,10 +100,14 @@ func main() {
 func dbClean(db *sql.DB) {
 	for {
 		xmutex.Lock()
-		db.Ping()
-		// Keep 7 days in db
-		db.Exec("DELETE from " + cfg["policy_table"] +
-			" where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
+		err := db.Ping()
+		if err == nil {
+			// Keep 7 days in db
+			db.Exec("DELETE from " + cfg["policy_table"] +
+				" where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
+		} else {
+			xlog.Err("Skipping dnClean db.Ping error :" + err.Error())
+		}
 		xmutex.Unlock()
 		// Clean every day
 		time.Sleep(24 * time.Hour)
@@ -203,7 +207,7 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	dberr := db.Ping()
 	if dberr != nil {
-		xlog.Err("Error after db.Ping " + dberr.Error())
+		xlog.Err("Skipping policyVerify db.Ping Error" + dberr.Error())
 		return "DUNNO" // always return DUNNO on error
 	}
 
