@@ -1,6 +1,6 @@
 [![pipeline status](https://git.dsi.uvsq.fr/thiecail/policyd/badges/deployed/pipeline.svg)](https://git.dsi.uvsq.fr/thiecail/policyd/commits/deployed)
 
-# policyd(go) : Postfix Policyd Rate limiter 
+# ![lock](contrib/24-security-lock.png) policyd(go) : Postfix Policyd Rate limiter  
 
 Le but du projet est d'avoir un démon capable de limiter le nombre d'envois de mail par utilisateur authentifié.
 
@@ -8,14 +8,16 @@ Un petit outil à été développé sur la base d'un démon policyd existant : [
 
 Il consiste en un démon utilisant les chiffres de  "policy postfix" , et émet la réponse DUNNO (continuer)/HOLD (conserver)/REJECT (rejeter) suivant le nombre de destinataires de mails par jour.
 
-### Wiki : [systeme:logiciel:postfix#postfix_policyd_helper](http://wiki.dsi.uvsq.fr/systeme:logiciel:postfix#postfix_policyd_helper)
+### Wiki :    [systeme:logiciel:postfix#postfix_policyd_helper](http://wiki.dsi.uvsq.fr/systeme:logiciel:postfix#postfix_policyd_helper) 
 
-### Fonctionnalités: 
-  - Stockage dans une base MYSQL(mariadb) des évenements policyd
-  - vérification du nombre total de destinataires sur 24h par rapport au quota max(1500).
-  - conservation des mails pour les 1500 destinataires suivants ( analyse SPAM, requeue avant whitelisting ).
-  - rejet a partir de 2x quota max (3000)
+### Fonctionnalités : 
+  ![](contrib/accept.png) Stockage dans une base MYSQL(mariadb) des évenements policyd
 
+  ![](contrib/accept.png) vérification du nombre total de destinataires sur 24h par rapport au quota max(1500).
+
+  ![](contrib/accept.png) conservation des mails pour les 1500 destinataires suivants ( analyse SPAM, requeue avant whitelisting ).
+
+  ![](contrib/accept.png) rejet a partir de 2x quota max (3000)
 
 ## Build
 ```
@@ -106,15 +108,23 @@ Sep 25 11:19:55 smtps systemd: Failed to start Policyd go daemon for Postfix.
 Sep 25 11:20:20 smtps systemd: Failed to start Policyd go daemon for Postfix.
 
 [root@smtps bin]# tail /var/log/daemon.info
-Sep 26 16:23:34 smtps policyd[18771]: Updating db: nathlarm/nathalie.larmet@uvsq.fr/193.51.39.7/1/6
-Sep 26 16:24:22 smtps policyd[18771]: Updating db: anabdois/anabelle.doisy@uvsq.fr/193.51.39.96/1/46
-Sep 26 16:24:27 smtps policyd[18771]: Updating db: laurolch/laure.olchowik@uvsq.fr/193.51.27.247/6/48
-Sep 26 16:25:27 smtps policyd[18771]: Updating db: anabdois/anabelle.doisy@uvsq.fr/193.51.39.96/1/47
-Sep 26 16:25:55 smtps policyd[18771]: Updating db: solehail/solene.haillard@uvsq.fr/192.168.5.194/1/43
-Sep 26 16:26:37 smtps policyd[18771]: Updating db: sandnico/sandrine.nicourd@uvsq.fr/83.204.194.47/1/38
-Sep 26 16:27:03 smtps policyd[18771]: Updating db: patrgoun/patricia.gounon@uvsq.fr/193.51.24.154/3/12
-Sep 26 16:27:21 smtps policyd[18771]: Updating db: anabdois/anabelle.doisy@uvsq.fr/193.51.39.96/1/48
-Sep 26 16:27:53 smtps policyd[18771]: Updating db: anabdois/anabelle.doisy@uvsq.fr/193.51.39.96/2/50
-Sep 26 16:28:15 smtps policyd[18771]: Updating db: migulebe/lebert@iut-velizy.uvsq.fr/193.51.24.154/1/14
+Sep 26 16:23:34 smtps policyd[18771]: Updating db: nathxxxx/nathalie.xxxxxxxx@mydomain.fr/192.168.39.7/1/6
+Sep 26 16:24:22 smtps policyd[18771]: Updating db: anaxxxxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/1/46
+Sep 26 16:24:27 smtps policyd[18771]: Updating db: laurxxxxx/laure.xxxxxxxx@mydomain.fr/192.168.27.247/6/48
+Sep 26 16:25:27 smtps policyd[18771]: Updating db: anaxxxxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/1/47
+Sep 26 16:25:55 smtps policyd[18771]: Updating db: solexxxxxx/solene.xxxxx@mydomain.fr/192.168.5.194/1/43
+Sep 26 16:26:37 smtps policyd[18771]: Updating db: sandxxxxxx/sandrine.xxxxxx@mydomain.fr/83.204.194.47/1/38
+Sep 26 16:27:03 smtps policyd[18771]: Updating db: patrxxxxxx/patricia.xxxxxxxx@mydomain.fr/192.168.24.154/3/12
+Sep 26 16:27:21 smtps policyd[18771]: Updating db: anaxxxxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/1/48
+Sep 26 16:27:53 smtps policyd[18771]: Updating db: anaxxxxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/2/50
+Sep 26 16:28:15 smtps policyd[18771]: Updating db: migulebe/migxxxxx@sub.mydomain.fr/192.168.24.154/1/14
 
 ```
+
+Le format est identifiant/email/ip/destinataires/sumdestinataire24h.
+
+Par exemple: la ligne 
+
+Sep 26 16:27:53 smtps policyd[18771]: Updating db: anaxxxxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/2/50
+
+indique l'envoi d'un mail vers 2 destinataires, portant le total de destinataires sur 24h à 50.
