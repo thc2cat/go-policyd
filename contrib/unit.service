@@ -6,6 +6,8 @@ After=network.target
 Type=simple
 ExecStart=/local/bin/policyd
 
+Restart=always
+
 [Install]
 WantedBy=multi-user.target
 

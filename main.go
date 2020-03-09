@@ -1,20 +1,20 @@
 package main
 
 // History :
-// 2019/09/10 :  tag 0.1 - compiling.
-// 2019/09/12 :  tag 0.1 - deployed
-// 2019/09/13 :  tag 0.3 - +pid,whitelist/blacklist
-// 2019/09/13 :  tag 0.4 - +correction bug SUM (cast)
-// 2019/09/16 :  tag 0.5 - +dbClean
-// 2019/09/17 :  tag 0.6 - cut saslUsername@uvsq.fr
-// 2019/09/19 :  tag 0.61 - more logs for whitelist/blacklist
-//                       - auto version with git tag
-// 2019/09/23 :  tag 0.63 - log DBSUM too, suppress debug output.
-// 2019/09/25 : tag 0.7 - no more daemon/debug
-// 2019/09/27 : tag 0.72 - bug dbSum
-// 0.73 : show version when args are given
-// 0.74 : more infos for white/blacklisted
-// 0.75 : whitelisted only during workinghours, and not weekend
+// 2019/09/10: tag 0.1 - compiling.
+// 2019/09/12: tag 0.1 - deployed
+// 2019/09/13: tag 0.3 - +pid,whitelist/blacklist
+// 2019/09/13: tag 0.4 - +correction bug SUM (cast)
+// 2019/09/16: tag 0.5 - +dbClean
+// 2019/09/17: tag 0.6 - cut saslUsername@uvsq.fr
+// 2019/09/19: tag 0.61 - more logs for whitelist/blacklist
+//                      - auto version with git tag
+// 2019/09/23: tag 0.63 - log DBSUM too, suppress debug output.
+// 2019/09/25: tag 0.7  - no more daemon/debug
+// 2019/09/27: tag 0.72 - bug dbSum
+// 0.73: show version when args are given
+// 0.74: more infos for white/blacklisted
+// 0.75: whitelisted only during workinghours, and not weekend
 //
 // TODO : with context for DB blackout.
 
@@ -100,10 +100,14 @@ func main() {
 func dbClean(db *sql.DB) {
 	for {
 		xmutex.Lock()
-		db.Ping()
-		// Keep 7 days in db
-		db.Exec("DELETE from " + cfg["policy_table"] +
-			" where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
+		err := db.Ping()
+		if err == nil {
+			// Keep 7 days in db
+			db.Exec("DELETE from " + cfg["policy_table"] +
+				" where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
+		} else {
+			xlog.Err("Skipping dnClean db.Ping error :" + err.Error())
+		}
 		xmutex.Unlock()
 		// Clean every day
 		time.Sleep(24 * time.Hour)
@@ -176,7 +180,7 @@ func policyVerify(xdata connData, db *sql.DB) string {
 	switch {
 
 	case len(xdata.saslUsername) > 8:
-		xlog.Info(fmt.Sprintf("REJECT saslUsername too long : %s ",
+		xlog.Info(fmt.Sprintf("REJECT saslUsername too long: %s",
 			xdata.saslUsername))
 		return "REJECT saslUsername too long"
 
@@ -184,13 +188,13 @@ func policyVerify(xdata connData, db *sql.DB) string {
 		return "REJECT missing infos"
 
 	case blacklisted(xdata):
-		xlog.Info(fmt.Sprintf("Holding blacklisted user : %s/%s/%s/%s",
+		xlog.Info(fmt.Sprintf("Holding blacklisted user: %s/%s/%s/%s",
 			xdata.saslUsername, xdata.sender, xdata.clientAddress,
 			xdata.recipientCount))
 		return "HOLD blacklisted"
 
 	case officehours && !weekend && whitelisted(xdata):
-		xlog.Info(fmt.Sprintf("skipping whitelisted user : %s/%s/%s/%s",
+		xlog.Info(fmt.Sprintf("skipping whitelisted user: %s/%s/%s/%s",
 			xdata.saslUsername, xdata.sender, xdata.clientAddress,
 			xdata.recipientCount))
 		return "DUNNO"
@@ -203,7 +207,7 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	dberr := db.Ping()
 	if dberr != nil {
-		xlog.Err("Error after db.Ping " + dberr.Error())
+		xlog.Err("Skipping policyVerify db.Ping Error: " + dberr.Error())
 		return "DUNNO" // always return DUNNO on error
 	}
 
@@ -213,7 +217,7 @@ func policyVerify(xdata connData, db *sql.DB) string {
 		" SET sasl_username=?, sender=?, client_address=?, recipient_count=?",
 		xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount)
 	if err != nil {
-		xlog.Err("ERROR while UPDATING db :" + err.Error())
+		xlog.Err("ERROR while UPDATING db: " + err.Error())
 		time.Sleep(3 * time.Second) // Mutex + delay = secure mysql primary key
 		xlog.Info("Rate limiting similar requests, sleeping for a few secs...")
 	}
