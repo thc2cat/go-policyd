@@ -1,39 +1,49 @@
 
 [![pipeline status](https://git.dsi.uvsq.fr/thiecail/policyd/badges/deployed/pipeline.svg)](https://git.dsi.uvsq.fr/thiecail/policyd/commits/deployed)
 
-# ![lock](contrib/24-security-lock.png) policyd(go) : Postfix Policyd Rate limiter  
+# ![lock](contrib/24-security-lock.png) go-policyd : Postfix Policyd Rate limiter  
 
-Ce projet a pour but de limiter le réduire le volume de spam envoyés via postfix par utilisateur authentifié lors de phishing réussis.
+go-policyd project purpose is to limit spam emission sent via authenticated user with postfix when phishing succeeds.
 
-Un petit outil à été développé sur la base d'un démon policyd existant : [polka](https://github.com/SimoneLazzaris/polka)
+This daemon has been written from a existing policyd daemon : [polka](https://github.com/SimoneLazzaris/polka)
 
-Il consiste en un démon utilisant les chiffres de  "policy postfix" , et émet la réponse DUNNO (continuer)/HOLD (conserver)/REJECT (rejeter) suivant le nombre de destinataires de mails par jour.
 
-### Wiki :    [systeme:logiciel:postfix#postfix_policyd_helper](http://wiki.dsi.uvsq.fr/systeme:logiciel:postfix#postfix_policyd_helper) 
+go-policyd use postfix policy protocol, and based on recipients numbers cumulated by day respond DUNNO (neutral)/ HOLD (store in quarantine)/ REJECT ( refuse mail.).
 
-### Fonctionnalités : 
-  ![](contrib/accept.png) Stockage dans une base MYSQL(mariadb) des évènements policyd
 
-  ![](contrib/accept.png) vérification du nombre total de destinataires sur 24h par rapport au quota max(1500).
+### Main features: 
+  ![](contrib/accept.png) Mysql(Mariadb) storage of policyd events.
 
-  ![](contrib/accept.png) conservation des mails pour les 1500 destinataires suivants ( pour analyse , et requeue si  whitelisting ).
+  ![](contrib/accept.png) Quota of total recipients by day for an authenticated sender (max 1500 recipients).
 
-  ![](contrib/accept.png) rejet a partir de 2x quota max (3000)
+  ![](contrib/accept.png) Hold queue when over quota  for mail analysis and requeue if whitelisting or errors.
+
+  ![](contrib/accept.png) rejection when recipients sum is over 2x quota max (3000)
 
 ## Build
+
+"go build" will download dependencies and build binary
+
+Via Makefile : 
+
+```Makefile
+NAME= $(notdir $(shell pwd))
+TAG=$(shell git tag)
+
+{NAME}:
+  go build -ldflags '-w -s -X main.Version=${NAME}-${TAG}' -o ${NAME}
 ```
-go build         ## pour créer le binaire
-```
 
-# Installation 
+# Setup  
 
- - Le binaire est installé dans __/local/bin/policyd__, 
- - le fichier de configuration dans __/etc/postfix/policyd.cfg__ ( voir exemple.cfg )
- - le service systemd dans __/local/etc/policyd.service__
+ - binary  __/local/bin/policyd__, 
+ - config file  __/etc/postfix/policyd.cfg__ ( see contrib/policyd.cfg )
+ - CentOS systemd service  __/local/etc/policyd.service__
+ - mariadb
 
-## Configuration Postfix
+## Postfix Configuration 
 
-Ajouter dans /etc/postfix/main.cf :
+Add /etc/postfix/main.cf :
 ```
 # Testing policy protocol dump (end_of_data pour avoir nbrcpt )
 smtpd_end_of_data_restrictions = check_policy_service inet:127.0.0.1:9093
@@ -41,12 +51,11 @@ smtpd_end_of_data_restrictions = check_policy_service inet:127.0.0.1:9093
 
 ## Whitelisting
 
-Le whitelisting est permis durant les heures de travail ( 7h-19h , en dehors des WE ).
-Une entrée blacklistée est permanente.
+Whitelisting is available during offices hours ( not Week Ends)
+Blacklisted entries are permanent.
 
-## Lancement du démon via systemd
+## systemd daemon setup 
 ```Shell Session
-Recopier unit.service dans /local/etc/policyd.service, puis
 
 # cp contrib/unit.service /local/etc/policyd.service
 # systemctl enable /local/etc/policyd.service
@@ -56,9 +65,7 @@ Recopier unit.service dans /local/etc/policyd.service, puis
 
 ```
 
-## SGBD mariadb 
-
-La table stockant les évènements d'emission postfix est construite de la manière suivante: 
+## SGBD mariadb table creation
 
 ```SQL
 > CREATE USER 'policyd_daemon'@'localhost' IDENTIFIED BY 'yourChoiceOfPassword';
@@ -78,19 +85,20 @@ Query OK, 1 row affected (0.00 sec)
 
 > GRANT ALL PRIVILEGES ON policyd.* TO 'policyd_daemon'@'localhost';
 Query OK, 0 rows affected (0.00 sec)
-
 ```
 
-Un outil utilisant les datas de la table events permets de sortir le top20 des usagers ( **contrib/policyd-top20.sh**)
+A policyd top20 usage display utility is available in **contrib/policyd-top20.sh**
 
-__Note__ : 
-On utilise un DATETIME(3) pour éviter les collisions de clefs lors d'enregistrements rapprochés.
-Le nettoyage des enregistrements plus vieux de 7 jours est fait quotidiennement toutes les 24 heures.
+__Nota__ : 
+DATETIME(3) avoid key collision when multiples connections occurs.
+The cleaning of records older than 7 days is done daily every 24 hours.
 
-## Surveillance
+## monit check
 
-Le démon une fois lancé par systemd est relancé en cas de fermeture inopinée.
-Cependant le demon est aussi surveillé par monit via les lignes : 
+The daemon once started by systemd is restarted in the event of an unexpected shutdown.
+
+However the daemon is also monitored by monit via the lines
+
 ```
 check program policyd with path "/usr/bin/systemctl --quiet is-active policyd"
    if status != 0 then restart
@@ -98,9 +106,9 @@ check program policyd with path "/usr/bin/systemctl --quiet is-active policyd"
    stop  program = "/usr/bin/systemctl stop  policyd.service"
 ```
 
-## Logs
+## Logs examples
 
-Le démon utilise syslog "daemon.ERR|INFO" pour diffuser les traces.
+go-policyd use syslog "daemon.ERR|INFO"  facility 
 
 ```Shell Session
 # tail /var/log/daemon.err
@@ -110,18 +118,17 @@ Sep 25 11:19:55 smtps systemd: Failed to start Policyd go daemon for Postfix.
 Sep 25 11:20:20 smtps systemd: Failed to start Policyd go daemon for Postfix.
 
 # tail /var/log/daemon.info
-Sep 26 16:23:34 smtps policyd[18771]: Updating db: nathxxxx/nathalie.xxxxxxxx@mydomain.fr/192.168.39.7/1/6
-Sep 26 16:24:22 smtps policyd[18771]: Updating db: anaxxxxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/1/46
-Sep 26 16:28:15 smtps policyd[18771]: Updating db: migulebe/migxxxxx@sub.mydomain.fr/192.168.24.154/1/14
+Sep 26 16:23:34 smtps policyd[18771]: Updating db: nathxxx/nathalie.xxxxxxxx@mydomain.fr/192.168.39.7/1/6
+Sep 26 16:24:22 smtps policyd[18771]: Updating db: anaxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/1/46
+Sep 26 16:28:15 smtps policyd[18771]: Updating db: migxxx/migxxxxx@sub.mydomain.fr/192.168.24.154/1/14
 
 ```
+The format is identifier / email / ip / recipients / recipientssumforthelast24h.
 
-Le format est identifiant/email/ip/destinataires/sumdestinataire24h.
 
-Par exemple: la ligne 
+Sep 26 16:27:53 smtps policyd[18771]: Updating db: anaxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/2/50
 
-Sep 26 16:27:53 smtps policyd[18771]: Updating db: anaxxxxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/2/50
-
-indique l'envoi d'un mail vers 2 destinataires, portant le total de destinataires sur 24h à 50.
+indicates the sending of an email to 2 recipients, bringing the total of recipients over 24 hours to 50.
 
 // cSpell:ignore policyd,smtps,sasl,monit,mariadb,smtpd,inet,SGBD
+// cSpell:ignore systeme,nbrcpt,Inno,nathxxx,anaxxx,migxxx
