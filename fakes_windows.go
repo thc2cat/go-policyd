@@ -1,6 +1,6 @@
 //+build windows
 
-// Windows fake functions -- polka is intended to work on Unix.
+// Windows fake functions -- this is intended to work on Unix.
 package main
 
 type myXlog int
