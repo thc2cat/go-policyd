@@ -3,7 +3,11 @@
 
 # ![lock](contrib/24-security-lock.png) go-policyd : Postfix Policyd Rate limiter  
 
+<<<<<<< HEAD
 go-policyd project purpose is to limit spam volume emission sent via authenticated user with postfix when phishing succeeds.
+=======
+go-policyd project purpose is to limit spam emission sent via authenticated user with postfix when phishing succeeds.
+>>>>>>> for_github
 
 This daemon has been written from a existing policyd daemon : [polka](https://github.com/SimoneLazzaris/polka)
 
@@ -12,6 +16,7 @@ go-policyd use postfix policy protocol, and based on recipients numbers cumulate
 
 
 ### Main features: 
+<<<<<<< HEAD
   ![](contrib/accept.png) Single binary serving as network daemon, allowing multiple remote docker usage.
 
   ![](contrib/accept.png) Mysql(Mariadb) for decentralized storage of policyd events.
@@ -36,15 +41,60 @@ TAG=$(shell git tag)
 
 {NAME}:
   go build -ldflags '-w -s -X main.Version=${NAME}-${TAG}' -o ${NAME}
+=======
+  ![](contrib/accept.png) Mysql(Mariadb) storage of policyd events.
+
+  ![](contrib/accept.png) Quota of total recipients by day for an authenticated sender (max 1500 recipients).
+
+  ![](contrib/accept.png) Hold queue when over quota  for mail analysis and requeue if whitelisting or errors.
+
+  ![](contrib/accept.png) rejection when recipients sum is over 2x quota max (3000)
+
+## Build
+
+"go build" will download dependencies and build binary
+
+Via Makefile : 
+
+```Makefile
+NAME= $(notdir $(shell pwd))
+TAG=$(shell git tag)
+
+{NAME}:
+  go build -ldflags '-w -s -X main.Version=${NAME}-${TAG}' -o ${NAME}
+```
+
+# Setup  
+
+ - binary  __/local/bin/policyd__, 
+ - config file  __/etc/postfix/policyd.cfg__ ( see contrib/policyd.cfg )
+ - CentOS systemd service  __/local/etc/policyd.service__
+ - mariadb
+
+## Postfix Configuration 
+
+Add /etc/postfix/main.cf :
+```
+# Testing policy protocol dump (end_of_data pour avoir nbrcpt )
+smtpd_end_of_data_restrictions = check_policy_service inet:127.0.0.1:9093
+>>>>>>> for_github
 ```
 
 # How to use go-policyd
 
+<<<<<<< HEAD
  - Configure postfix for policyd restrictions
  - Create mariadb database
  - copy binary  in __/local/bin/policyd__, 
  - Adapt config file contrib/policyd.cfg to  __/etc/postfix/policyd.cfg__ 
  - Enable (CentOS systemd) service  __/local/etc/policyd.service__
+=======
+Whitelisting is available during offices hours ( not Week Ends)
+Blacklisted entries are permanent.
+
+## systemd daemon setup 
+```Shell Session
+>>>>>>> for_github
 
 ## Postfix Configuration 
 
@@ -55,7 +105,11 @@ smtpd_end_of_data_restrictions = check_policy_service inet:127.0.0.1:9093
 ```
 Then verify configuration with 'postfix check' command
 
+<<<<<<< HEAD
 ## SGBD mariadb database creation
+=======
+## SGBD mariadb table creation
+>>>>>>> for_github
 
 ```SQL
 > CREATE USER 'policyd_daemon'@'localhost' IDENTIFIED BY 'yourChoiceOfPassword';
@@ -75,6 +129,7 @@ Query OK, 1 row affected (0.00 sec)
 
 > GRANT ALL PRIVILEGES ON policyd.* TO 'policyd_daemon'@'localhost';
 Query OK, 0 rows affected (0.00 sec)
+<<<<<<< HEAD
 ```
 
 
@@ -103,6 +158,20 @@ __Nota__ :
 
 The daemon once started by systemd is restarted in the event of an unexpected shutdown.
 
+=======
+```
+
+A policyd top20 usage display utility is available in **contrib/policyd-top20.sh**
+
+__Nota__ : 
+DATETIME(3) avoid key collision when multiples connections occurs.
+The cleaning of records older than 7 days is done daily every 24 hours.
+
+## monit check
+
+The daemon once started by systemd is restarted in the event of an unexpected shutdown.
+
+>>>>>>> for_github
 However the daemon is also monitored by monit via the lines
 
 ```
@@ -114,7 +183,11 @@ check program policyd with path "/usr/bin/systemctl --quiet is-active policyd"
 
 ## Logs examples
 
+<<<<<<< HEAD
 go-policyd use syslog "daemon.ERR|INFO" facility 
+=======
+go-policyd use syslog "daemon.ERR|INFO"  facility 
+>>>>>>> for_github
 
 ```Shell Session
 # tail /var/log/daemon.err
@@ -127,6 +200,7 @@ Sep 25 11:20:20 smtps systemd: Failed to start Policyd go daemon for Postfix.
 Sep 26 16:23:34 smtps policyd[18771]: Updating db: nathxxx/nathalie.xxxxxxxx@mydomain.fr/192.168.39.7/1/6
 Sep 26 16:24:22 smtps policyd[18771]: Updating db: anaxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/1/46
 Sep 26 16:28:15 smtps policyd[18771]: Updating db: migxxx/migxxxxx@sub.mydomain.fr/192.168.24.154/1/14
+<<<<<<< HEAD
 ```
 The format is identifier / email / ip / recipients / recipientssumforthelast24h.
 
@@ -137,3 +211,16 @@ indicates the sending of an email to 2 recipients, bringing the total of recipie
 
 // cSpell:ignore policyd,smtps,sasl,monit,mariadb,smtpd,inet,SGBD
 // cSpell:ignore systeme,nbrcpt,Inno,nathxxx,anaxxx,migxxx
+=======
+
+```
+The format is identifier / email / ip / recipients / recipientssumforthelast24h.
+
+
+Sep 26 16:27:53 smtps policyd[18771]: Updating db: anaxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/2/50
+
+indicates the sending of an email to 2 recipients, bringing the total of recipients over 24 hours to 50.
+
+// cSpell:ignore policyd,smtps,sasl,monit,mariadb,smtpd,inet,SGBD
+// cSpell:ignore systeme,nbrcpt,Inno,nathxxx,anaxxx,migxxx
+>>>>>>> for_github
