@@ -24,22 +24,22 @@ func InitCfg(s string) {
 	defer f.Close()
 	rd := bufio.NewReader(f)
 	for {
-		lin, err := rd.ReadString('\n')
+		cfgline, err := rd.ReadString('\n')
 		if err != nil {
 			break
 		}
-		lin = strings.Trim(lin, " \n\r")
-		vv := strings.SplitN(lin, "=", 2)
-		if len(vv) < 2 {
+		cfgline = strings.Trim(cfgline, " \n\r")
+		cfgval := strings.SplitN(cfgline, "=", 2)
+		if len(cfgval) < 2 {
 			continue
 		}
 		switch {
-		case vv[0] == "blacklist":
-			inblacklist[vv[1]] = true
-		case vv[0] == "whitelist":
-			inwhitelist[vv[1]] = true
+		case cfgval[0] == "blacklist":
+			inblacklist[cfgval[1]] = true
+		case cfgval[0] == "whitelist":
+			inwhitelist[cfgval[1]] = true
 		default:
-			cfg[vv[0]] = vv[1]
+			cfg[cfgval[0]] = cfgval[1]
 		}
 	}
 }

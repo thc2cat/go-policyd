@@ -6,7 +6,7 @@ package main
 // 2019/09/13: tag 0.3 - +pid,whitelist/blacklist
 // 2019/09/13: tag 0.4 - +correction bug SUM (cast)
 // 2019/09/16: tag 0.5 - +dbClean
-// 2019/09/17: tag 0.6 - cut saslUsername@uvsq.fr
+// 2019/09/17: tag 0.6 - cut saslUsername@DOMAIN
 // 2019/09/19: tag 0.61 - more logs for whitelist/blacklist
 //                      - auto version with git tag
 // 2019/09/23: tag 0.63 - log DBSUM too, suppress debug output.
@@ -106,7 +106,7 @@ func dbClean(db *sql.DB) {
 			db.Exec("DELETE from " + cfg["policy_table"] +
 				" where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
 		} else {
-			xlog.Err("Skipping dnClean db.Ping error :" + err.Error())
+			xlog.Err("dbClean db.Exec error :" + err.Error())
 		}
 		xmutex.Unlock()
 		// Clean every day
@@ -163,7 +163,7 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 	conn.Close()
 }
 
-func policyVerify(xdata connData, db *sql.DB) string {
+func policyVerify(x connData, db *sql.DB) string {
 
 	var dbSum int64
 
@@ -179,24 +179,24 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	switch {
 
-	case len(xdata.saslUsername) > 8:
+	case len(x.saslUsername) > 8:
 		xlog.Info(fmt.Sprintf("REJECT saslUsername too long: %s",
-			xdata.saslUsername))
+			x.saslUsername))
 		return "REJECT saslUsername too long"
 
-	case xdata.saslUsername == "" || xdata.sender == "" || xdata.clientAddress == "":
+	case x.saslUsername == "" || x.sender == "" || x.clientAddress == "":
 		return "REJECT missing infos"
 
-	case blacklisted(xdata):
+	case blacklisted(x):
 		xlog.Info(fmt.Sprintf("Holding blacklisted user: %s/%s/%s/%s",
-			xdata.saslUsername, xdata.sender, xdata.clientAddress,
-			xdata.recipientCount))
+			x.saslUsername, x.sender, x.clientAddress,
+			x.recipientCount))
 		return "HOLD blacklisted"
 
-	case officehours && !weekend && whitelisted(xdata):
+	case officehours && !weekend && whitelisted(x):
 		xlog.Info(fmt.Sprintf("skipping whitelisted user: %s/%s/%s/%s",
-			xdata.saslUsername, xdata.sender, xdata.clientAddress,
-			xdata.recipientCount))
+			x.saslUsername, x.sender, x.clientAddress,
+			x.recipientCount))
 		return "DUNNO"
 	}
 
@@ -215,7 +215,7 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	_, err := db.Exec("INSERT INTO "+cfg["policy_table"]+
 		" SET sasl_username=?, sender=?, client_address=?, recipient_count=?",
-		xdata.saslUsername, xdata.sender, xdata.clientAddress, xdata.recipientCount)
+		x.saslUsername, x.sender, x.clientAddress, x.recipientCount)
 	if err != nil {
 		xlog.Err("ERROR while UPDATING db: " + err.Error())
 		time.Sleep(3 * time.Second) // Mutex + delay = secure mysql primary key
@@ -224,30 +224,30 @@ func policyVerify(xdata connData, db *sql.DB) string {
 
 	sumerr := db.QueryRow("SELECT SUM(recipient_count) FROM "+cfg["policy_table"]+
 		" WHERE sasl_username=? AND ts>DATE_SUB(CURRENT_TIMESTAMP(3), INTERVAL 1 DAY)",
-		xdata.saslUsername).Scan(&dbSum)
+		x.saslUsername).Scan(&dbSum)
 
-	if sumerr != nil { // Pas normal, l'erreur noRow.
+	if sumerr != nil {
+		//  ErrNoRow leads to "converting NULL to int64 is unsupported"
 		// lets consider it's a new entry.
-		// when message is  "converting NULL to int64 is unsupported"
 		dbSum = 0
 	}
 
 	//  Add new entry first, ensuring correct SUM
 	xlog.Info(fmt.Sprintf("Updating db: %s/%s/%s/%s/%v",
-		xdata.saslUsername, xdata.sender, xdata.clientAddress,
-		xdata.recipientCount, dbSum))
+		x.saslUsername, x.sender, x.clientAddress,
+		x.recipientCount, dbSum))
 
 	switch {
 	case dbSum >= 2*defaultQuota:
 		xlog.Info(fmt.Sprintf("REJECTING overquota (%v>2x%v) for user %s using %s from ip [%s]",
-			dbSum, defaultQuota, xdata.saslUsername, xdata.sender,
-			xdata.clientAddress))
+			dbSum, defaultQuota, x.saslUsername, x.sender,
+			x.clientAddress))
 		return "REJECT max quota exceeded"
 
 	case dbSum >= defaultQuota:
 		xlog.Info(fmt.Sprintf("DEFERRING overquota (%v>%v) for user %s using %s from ip [%s]",
-			dbSum, defaultQuota, xdata.saslUsername, xdata.sender,
-			xdata.clientAddress))
+			dbSum, defaultQuota, x.saslUsername, x.sender,
+			x.clientAddress))
 		return "HOLD quota exceeded"
 
 	default:
@@ -255,18 +255,18 @@ func policyVerify(xdata connData, db *sql.DB) string {
 	}
 }
 
-func whitelisted(xdata connData) bool {
-	if inwhitelist[xdata.saslUsername] ||
-		inwhitelist[xdata.sender] ||
-		inwhitelist[xdata.clientAddress] {
+func whitelisted(d connData) bool {
+	if inwhitelist[d.saslUsername] ||
+		inwhitelist[d.sender] ||
+		inwhitelist[d.clientAddress] {
 		return true
 	}
 	return false
 }
-func blacklisted(xdata connData) bool {
-	if inblacklist[xdata.saslUsername] ||
-		inblacklist[xdata.sender] ||
-		inblacklist[xdata.clientAddress] {
+func blacklisted(d connData) bool {
+	if inblacklist[d.saslUsername] ||
+		inblacklist[d.sender] ||
+		inblacklist[d.clientAddress] {
 		return true
 	}
 	return false
