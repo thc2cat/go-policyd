@@ -1,5 +1,5 @@
 
-[![Build Status](https://img.shields.io/travis/thc2cat/go-policyd.svg?style=flat-square)](https://travis-ci.org/thc2cat/go-policyd)
+[![Build Status](https://travis-ci.com/thc2cat/go-policyd.svg?branch=for_github)](https://travis-ci.org/thc2cat/go-policyd)
 
 # ![lock](contrib/24-security-lock.png) go-policyd : Postfix Policyd Rate limiter  
 
