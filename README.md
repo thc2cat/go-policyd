@@ -1,5 +1,9 @@
 
+<<<<<<< HEAD
 [![Build Status](https://travis-ci.com/thc2cat/go-policyd.svg?branch=for_github)](https://travis-ci.org/thc2cat/go-policyd)
+=======
+[![Build Status](https://img.shields.io/travis/thc2cat/go-policyd.svg?style=flat-square)](https://travis-ci.org/thc2cat/go-policyd)
+>>>>>>> + travis.yml
 
 # ![lock](contrib/24-security-lock.png) go-policyd : Postfix Policyd Rate limiter  
 
@@ -223,4 +227,7 @@ indicates the sending of an email to 2 recipients, bringing the total of recipie
 
 // cSpell:ignore policyd,smtps,sasl,monit,mariadb,smtpd,inet,SGBD
 // cSpell:ignore systeme,nbrcpt,Inno,nathxxx,anaxxx,migxxx
+<<<<<<< HEAD
 >>>>>>> for_github
+=======
+>>>>>>> + travis.yml
