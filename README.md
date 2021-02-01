@@ -1,5 +1,5 @@
 
-[![pipeline status](https://git.dsi.uvsq.fr/thiecail/policyd/badges/deployed/pipeline.svg)](https://git.dsi.uvsq.fr/thiecail/policyd/commits/deployed)
+[![Build Status](https://img.shields.io/travis/thc2cat/go-policyd.svg?style=flat-square)](https://travis-ci.org/thc2cat/go-policyd)
 
 # ![lock](contrib/24-security-lock.png) go-policyd : Postfix Policyd Rate limiter  
 
