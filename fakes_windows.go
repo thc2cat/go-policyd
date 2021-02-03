@@ -1,6 +1,7 @@
 //+build windows
 
-// Windows fake functions -- this is intended to work on Unix.
+// Windows fake functions when editing on windows
+// -- this is intended to work on Unix first.
 package main
 
 type myXlog int
