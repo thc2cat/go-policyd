@@ -1,0 +1,11 @@
+variables:
+  BINARY_NAME: $CI_PROJECT_NAME
+
+stages: 
+ - build
+
+build:
+  stage: build
+  image: golang:alpine
+  script:
+    - go build 

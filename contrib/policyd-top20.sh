@@ -6,9 +6,10 @@ then
  echo "must be root !"
  exit -1
 fi
+
 ## Attention au "\r" en fin de ligne si le fichier est edité sous windows...
 ##
-##  sed $'s/\r//' -i  /etc/postfix/policyd.cfg (pour corriger)
+##  sed 's/\r//' -i  /etc/postfix/policyd.cfg (pour corriger)
 
 . /etc/postfix/policyd.cfg
 

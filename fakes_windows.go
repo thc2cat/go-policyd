@@ -1,4 +1,4 @@
-//+build windows
+//+BUILD WINDOWS
 
 // Windows fake functions when editing on windows
 // -- this is intended to work on Unix first.

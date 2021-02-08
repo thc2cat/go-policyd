@@ -163,11 +163,7 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 	conn.Close()
 }
 
-func policyVerify(x connData, db *sql.DB) string {
-
-	var dbSum int64
-
-	// Block WeekEnd or out of office hours
+func officehourswhitelisted(x connData) bool {
 	var officehours, weekend bool
 
 	if h, _, _ := time.Now().Clock(); h >= 7 && h <= 19 {
@@ -176,6 +172,14 @@ func policyVerify(x connData, db *sql.DB) string {
 	if d := int(time.Now().Weekday()); d == 7 || d == 0 {
 		weekend = true
 	}
+	return officehours && !weekend && whitelisted(x)
+}
+
+func policyVerify(x connData, db *sql.DB) string {
+
+	var dbSum int64
+
+	// Block WeekEnd or out of office hours
 
 	switch {
 
@@ -193,14 +197,12 @@ func policyVerify(x connData, db *sql.DB) string {
 			x.recipientCount))
 		return "HOLD blacklisted"
 
-	case officehours && !weekend && whitelisted(x):
+	case officehourswhitelisted(x):
 		xlog.Info(fmt.Sprintf("skipping whitelisted user: %s/%s/%s/%s",
 			x.saslUsername, x.sender, x.clientAddress,
 			x.recipientCount))
 		return "DUNNO"
 	}
-
-	// rcpt, _ := strconv.ParseInt(xdata.recipientCount, 0, 64)
 
 	xmutex.Lock() // Use mutex because dbcleaning may occur at the same time.
 	defer xmutex.Unlock()
