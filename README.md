@@ -1,35 +1,37 @@
+# ![lock](contrib/24-security-lock.png) go-policyd : a simple Postfix Policyd Rate limiter
 
 [![Build Status](https://travis-ci.com/thc2cat/go-policyd.svg?branch=for_github)](https://travis-ci.org/thc2cat/go-policyd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/thc2cat/go-policyd)](https://goreportcard.com/report/github.com/thc2cat/go-policyd)
 
-# ![lock](contrib/24-security-lock.png) go-policyd : Postfix Policyd Rate limiter  
-
-go-policyd project purpose is to limit spam volume emission sent via authenticated user with postfix when phishing succeeds.
+go-policyd project purpose is to limit postfix spam volume emission sent via authenticated abused user when phishing succeeds.
 
 This daemon has been written from a existing policyd daemon : [polka](https://github.com/SimoneLazzaris/polka)
 
+go-policyd use postfix policy protocol (check [Postfix SMTP Access Policy Delegation](http://www.postfix.org/SMTPD_POLICY_README.html)), and based on recipients numbers cumulated by day respond DUNNO (neutral)/ HOLD (store in quarantine)/ REJECT ( refuse mail.).
 
-go-policyd use postfix policy protocol, and based on recipients numbers cumulated by day respond DUNNO (neutral)/ HOLD (store in quarantine)/ REJECT ( refuse mail.).
+Using a centralized database, it may be used for multiple authenticated postfix relays.
 
+Using this projects we successfully reduced our spam volume during phishing campaigns from 60.000 users spammed to 1500 per day.
 
-### Main features: 
-  ![](contrib/accept.png) Single binary serving as network daemon, allowing multiple remote docker usage.
+## Main features
 
-  ![](contrib/accept.png) Mysql(Mariadb) for decentralized storage of policyd events.
+  ![accept.png](contrib/accept.png) Single binary serving as network daemon, allowing multiple remote postfix smtps centralisation.
 
-  ![](contrib/accept.png) Quota of total recipients by day for an authenticated sender (max 1500 recipients).
+  ![accept.png](contrib/accept.png) Mysql(Mariadb) storage of policyd events.
 
-  ![](contrib/accept.png) Hold queue when over quota  for mail analysis and requeue if whitelisting or errors.
+  ![accept.png](contrib/accept.png) Quota of total recipients by day for an authenticated sender (max 1500 recipients).
 
-  ![](contrib/accept.png) rejection when recipients sum is over 2x quota max (3000)
+  ![accept.png](contrib/accept.png) Hold queue when over quota for mail analysis and requeue if whitelisting or errors.
 
-  ![](contrib/accept.png) Whitelisting is available during offices hours ( not Week Ends ). Blacklisted entries are permanent.
+  ![accept.png](contrib/accept.png) Rejection when recipients sum is over 2x quota max (3000)
+
+  ![accept.png](contrib/accept.png) Whitelisting is available during offices hours ( not Week Ends ). Blacklisted entries are permanent.
 
 ## Build
 
 "go build" should download dependencies and build binary
 
-Via Makefile : 
+Using Makefile
 
 ```Makefile
 NAME= $(notdir $(shell pwd))
@@ -39,24 +41,28 @@ TAG=$(shell git tag)
   go build -ldflags '-w -s -X main.Version=${NAME}-${TAG}' -o ${NAME}
 ```
 
-# How to use go-policyd
+## How to use go-policyd step by step
 
- - Configure postfix for policyd restrictions
- - Create mariadb database
- - copy binary  in __/local/bin/policyd__, 
- - Adapt config file contrib/policyd.cfg to  __/etc/postfix/policyd.cfg__ 
- - Enable (CentOS systemd) service  __/local/etc/policyd.service__
+* Configure postfix for policyd restrictions
+* Create mariadb database
+* copy binary  in __/local/bin/policyd__,
+* Adapt config file contrib/policyd.cfg to  __/etc/postfix/policyd.cfg__
+* Enable and start (CentOS systemd) service  __/local/etc/policyd.service__
 
-## Postfix Configuration 
+## Postfix Configuration
 
-Add /etc/postfix/main.cf :
-```
+Edit `/etc/postfix/main.cf` to add :
+
+```shell
 # Policyd restrictions ( at end_of_data stage for nbrcpt )
 smtpd_end_of_data_restrictions = check_policy_service inet:127.0.0.1:9093
 ```
-Then verify configuration with 'postfix check' command
 
-## SGBD mariadb database creation
+Then verify configuration with `postfix check` command
+
+## Mariadb SQL database creation
+
+Mariadb should be enabled and running in order to create database.
 
 ```SQL
 > CREATE USER 'policyd_daemon'@'localhost' IDENTIFIED BY 'yourChoiceOfPassword';
@@ -78,14 +84,13 @@ Query OK, 1 row affected (0.00 sec)
 Query OK, 0 rows affected (0.00 sec)
 ```
 
+__Nota__ :
 
+* DATETIME(3) avoid key collision when multiples connections occurs.
+* The cleaning of records older than 7 days is done daily every 24 hours.
+* A policyd top 20 usage display utility is available in **contrib/policyd-top20.sh**
 
-__Nota__ : 
-  - DATETIME(3) avoid key collision when multiples connections occurs.
-  - The cleaning of records older than 7 days is done daily every 24 hours.
-  - A policyd top 20 usage display utility is available in **contrib/policyd-top20.sh**
-
-## CentOS Systemd daemon setup 
+## CentOS Systemd daemon setup
 
 ```Shell Session
 # mkdir -p /local/bin/
@@ -94,11 +99,13 @@ __Nota__ :
 # cp contrib/policyd.cfg /etc/postfix/policyd.cfg
 # edit /etc/postfix/policyd.cfg
 
-# systemctl enable /local/etc/policyd.service
 # systemctl daemon-reload
+# systemctl enable /local/etc/policyd.service
 # systemctl start policyd.service
 # systemctl status  policyd.service
 ```
+
+Binary and config file localisation may be modified
 
 ## Monit check (optional)
 
@@ -106,7 +113,7 @@ The daemon once started by systemd is restarted in the event of an unexpected sh
 
 However the daemon is also monitored by monit via the lines
 
-```
+```shell
 check program policyd with path "/usr/bin/systemctl --quiet is-active policyd"
    if status != 0 then restart
    start program = "/usr/bin/systemctl start policyd.service"
@@ -115,7 +122,7 @@ check program policyd with path "/usr/bin/systemctl --quiet is-active policyd"
 
 ## Logs examples
 
-go-policyd use syslog "daemon.ERR|INFO" facility 
+go-policyd use syslog "daemon.ERR|INFO" facility
 
 ```Shell Session
 # tail /var/log/daemon.err
@@ -127,14 +134,13 @@ Sep 25 11:20:20 smtps systemd: Failed to start Policyd go daemon for Postfix.
 # tail /var/log/daemon.info
 Sep 26 16:23:34 smtps policyd[18771]: Updating db: nathxxx/nathalie.xxxxxxxx@mydomain.fr/192.168.39.7/1/6
 Sep 26 16:24:22 smtps policyd[18771]: Updating db: anaxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/1/46
-Sep 26 16:28:15 smtps policyd[18771]: Updating db: migxxx/migxxxxx@sub.mydomain.fr/192.168.24.154/1/14
+Sep 26 16:28:15 smtps policyd[18771]: Updating db: marxxx/maria.xxxxxxx@sub.mydomain.fr/192.168.24.154/1/14
 ```
-The format is identifier / email / ip / recipients / recipientssumforthelast24h.
 
-```
+The log format is identifier / email / ip / recipients / recipientssumforthelast24h.
+
+```shell
 Sep 26 16:27:53 smtps policyd[18771]: Updating db: anaxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/2/50
 ```
-indicates the sending of an email to 2 recipients, bringing the total of recipients over 24 hours to 50.
 
-// cSpell:ignore policyd,smtps,sasl,monit,mariadb,smtpd,inet,SGBD
-// cSpell:ignore systeme,nbrcpt,Inno,nathxxx,anaxxx,migxxx
+indicates the sending of an email to 2 recipients, bringing the total of recipients over 24 hours to 50.

@@ -15,6 +15,7 @@ package main
 // 0.73: show version when args are given
 // 0.74: more infos for white/blacklisted
 // 0.75: whitelisted only during workinghours, and not weekend
+// 0.76: SQL INSERT modified to cure SQL potential injections
 //
 // TODO : with context for DB blackout.
 
@@ -215,13 +216,18 @@ func policyVerify(x connData, db *sql.DB) string {
 
 	defer db.Exec("COMMMIT")
 
+	// FIXME use code like :  INSERT INTO TABLE users (fullname) VALUES (?)")
+	// exemple username =>   '); DROP TABLE users; --
+	// https://blog.sqreen.com/preventing-sql-injections-in-go-and-other-vulnerabilities/
+
 	_, err := db.Exec("INSERT INTO "+cfg["policy_table"]+
-		" SET sasl_username=?, sender=?, client_address=?, recipient_count=?",
+		"(sasl_username,sender,client_address,recipient_count) VALUES (?,?,?,?)",
 		x.saslUsername, x.sender, x.clientAddress, x.recipientCount)
+
 	if err != nil {
 		xlog.Err("ERROR while UPDATING db: " + err.Error())
 		time.Sleep(3 * time.Second) // Mutex + delay = secure mysql primary key
-		xlog.Info("Rate limiting similar requests, sleeping for a few secs...")
+		xlog.Info("Rate limited similar requests, sleeped for a 3 secs...")
 	}
 
 	sumerr := db.QueryRow("SELECT SUM(recipient_count) FROM "+cfg["policy_table"]+
