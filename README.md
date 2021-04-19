@@ -118,6 +118,12 @@ check program policyd with path "/usr/bin/systemctl --quiet is-active policyd"
    if status != 0 then restart
    start program = "/usr/bin/systemctl start policyd.service"
    stop  program = "/usr/bin/systemctl stop  policyd.service"
+
+## When user is over quota, mail is stored to postfix HOLD Queue, send alert
+check file daemon.info with path /var/log/daemon.info
+    ignore content = "monit"
+    if match "DEFERRING overquota" then alert
+
 ```
 
 ## Logs examples

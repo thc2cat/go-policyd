@@ -7,9 +7,11 @@ import (
 	"strings"
 )
 
-var cfg map[string]string
-var inblacklist map[string]bool
-var inwhitelist map[string]bool
+var (
+	cfg         map[string]string
+	inblacklist map[string]bool
+	inwhitelist map[string]bool
+)
 
 // InitCfg read cfgfile variable
 func InitCfg(s string) {
