@@ -1,0 +1,42 @@
+
+Real Exemple of Chrismas 2019 postfix maillog : two phished accounts and 80 ips
+
+... Begining of two abused accounts spamming : 
+     64 Dec 25 16:17:21 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/195.46.20.146/10/10
+     65 Dec 25 16:17:24 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/85.117.63.98/9/11
+     66 Dec 25 16:17:25 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/217.168.76.230/9/19
+     67 Dec 25 16:17:25 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/109.122.80.234/9/20
+     68 Dec 25 16:17:25 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/120.138.117.102/10/29
+     69 Dec 25 16:17:26 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/103.206.129.9/9/38
+     70 Dec 25 16:17:27 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/124.41.240.149/9/29
+     71 Dec 25 16:17:27 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/64.211.66.30/8/46
+     72 Dec 25 16:17:27 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/106.51.2.56/10/39
+     73 Dec 25 16:17:27 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/27.54.166.212/10/56
+...  Reaching quota with 1rst account
+    355 Dec 25 16:19:11 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/181.211.252.74/10/1492
+    356 Dec 25 16:19:11 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/202.63.242.20/9/1264
+    357 Dec 25 16:19:12 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/201.48.226.249/10/1502
+    358 Dec 25 16:19:12 smtps policyd[31899]: DEFERRING overquota (1502>1500) for user phish2 using anonymoused@domain from ip [201.48.226.249]
+    359 Dec 25 16:19:12 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/202.166.196.85/9/1511
+    360 Dec 25 16:19:12 smtps policyd[31899]: DEFERRING overquota (1511>1500) for user phish2 using anonymoused@domain from ip [202.166.196.85]
+    361 Dec 25 16:19:12 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/138.36.40.54/10/1521
+... Reaching quota with 2nd account
+    441 Dec 25 16:19:28 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/181.113.135.254/10/1495
+    442 Dec 25 16:19:29 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/191.37.79.243/10/1778
+    443 Dec 25 16:19:29 smtps policyd[31899]: DEFERRING overquota (1778>1500) for user phish2 using anonymoused@domain from ip [191.37.79.243]
+    444 Dec 25 16:19:29 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/103.106.32.226/10/1505
+    445 Dec 25 16:19:29 smtps policyd[31899]: DEFERRING overquota (1505>1500) for user pish1 using anonymoused@domain from ip [103.106.32.226]
+    446 Dec 25 16:19:29 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/182.52.238.37/9/1787
+    447 Dec 25 16:19:29 smtps policyd[31899]: DEFERRING overquota (1787>1500) for user phish2 using anonymoused@domain from ip [182.52.238.37]
+    448 Dec 25 16:19:29 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/109.122.80.234/9/1796
+... REJECTION begin
+   1023 Dec 25 16:21:12 smtps policyd[31899]: Updating db: phish2/anonymoused@domain/190.131.232.42/10/3004
+   1024 Dec 25 16:21:12 smtps policyd[31899]: REJECTING overquota (3004>2x1500) for user phish2 using anonymoused@domain from ip [190.131.232.42]
+...
+   1052 Dec 25 16:21:15 smtps policyd[31899]: REJECTING overquota (3077>2x1500) for user phish2 using anonymoused@domain from ip [1.10.188.93]
+   1053 Dec 25 16:21:15 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/118.175.93.137/10/3006
+   1054 Dec 25 16:21:15 smtps policyd[31899]: REJECTING overquota (3006>2x1500) for user pish1 using anonymoused@domain from ip [118.175.93.137]
+   1055 Dec 25 16:21:15 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/182.23.38.244/10/3016
+   1056 Dec 25 16:21:15 smtps policyd[31899]: REJECTING overquota (3016>2x1500) for user pish1 using anonymoused@domain from ip [182.23.38.244]
+   1057 Dec 25 16:21:16 smtps policyd[31899]: Updating db: pish1/anonymoused@domain/185.14.148.75/9/3025
+

@@ -1,1 +1,4 @@
 contrib/tests
+.vscode/
+go-policyd
+go.sum

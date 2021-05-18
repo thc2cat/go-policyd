@@ -16,6 +16,7 @@ package main
 // 0.74: more infos for white/blacklisted
 // 0.75: whitelisted only during workinghours, and not weekend
 // 0.76: SQL INSERT modified to cure SQL potential injections
+// 0.77: SQL DB.Exec recovery when DB.Ping() fail
 //
 // TODO : with context for DB blackout.
 
@@ -45,7 +46,7 @@ var (
 	xmutex       sync.Mutex
 	defaultQuota int64
 
-	// Version is git tag version exported by Makefile, printed by -debug
+	// Version is git tag version exported by Makefile
 	Version string
 )
 
@@ -98,23 +99,6 @@ func main() {
 	}
 }
 
-func dbClean(db *sql.DB) {
-	for {
-		xmutex.Lock()
-		err := db.Ping()
-		if err == nil {
-			// Keep 7 days in db
-			db.Exec("DELETE from " + cfg["policy_table"] +
-				" where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
-		} else {
-			xlog.Err("dbClean db.Exec error :" + err.Error())
-		}
-		xmutex.Unlock()
-		// Clean every day
-		time.Sleep(24 * time.Hour)
-	}
-}
-
 // Handles incoming requests.
 func handleRequest(conn net.Conn, db *sql.DB) {
 	var xdata connData
@@ -164,18 +148,6 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 	conn.Close()
 }
 
-func officehourswhitelisted(x connData) bool {
-	var officehours, weekend bool
-
-	if h, _, _ := time.Now().Clock(); h >= 7 && h <= 19 {
-		officehours = true
-	}
-	if d := int(time.Now().Weekday()); d == 7 || d == 0 {
-		weekend = true
-	}
-	return officehours && !weekend && whitelisted(x)
-}
-
 func policyVerify(x connData, db *sql.DB) string {
 
 	var dbSum int64
@@ -211,13 +183,14 @@ func policyVerify(x connData, db *sql.DB) string {
 	dberr := db.Ping()
 	if dberr != nil {
 		xlog.Err("Skipping policyVerify db.Ping Error: " + dberr.Error())
-		return "DUNNO" // always return DUNNO on error
+		db.Exec("SELECT NOW()") // Generate an error for db recovery
+		return "DUNNO"          // always return DUNNO on error
 	}
 
 	defer db.Exec("COMMMIT")
 
-	// FIXME use code like :  INSERT INTO TABLE users (fullname) VALUES (?)")
-	// exemple username =>   '); DROP TABLE users; --
+	// use code in the form   => INSERT INTO TABLE users (fullname) VALUES (?)")
+	// sould avoid entries like =>   '); DROP TABLE users; --
 	// https://blog.sqreen.com/preventing-sql-injections-in-go-and-other-vulnerabilities/
 
 	_, err := db.Exec("INSERT INTO "+cfg["policy_table"]+
@@ -263,6 +236,19 @@ func policyVerify(x connData, db *sql.DB) string {
 	}
 }
 
+// Check officeours only whitelisting
+func officehourswhitelisted(x connData) bool {
+	var officehours, weekend bool
+
+	if h, _, _ := time.Now().Clock(); h >= 7 && h <= 19 {
+		officehours = true
+	}
+	if d := int(time.Now().Weekday()); d == 7 || d == 0 {
+		weekend = true
+	}
+	return officehours && !weekend && whitelisted(x)
+}
+
 func whitelisted(d connData) bool {
 	if inwhitelist[d.saslUsername] ||
 		inwhitelist[d.sender] ||
@@ -278,4 +264,22 @@ func blacklisted(d connData) bool {
 		return true
 	}
 	return false
+}
+
+// dbClean delete 7 days old entries in db every 24h.
+func dbClean(db *sql.DB) {
+	for {
+		xmutex.Lock()
+		err := db.Ping()
+		if err == nil {
+			// Keep 7 days in db
+			db.Exec("DELETE from " + cfg["policy_table"] +
+				" where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
+		} else {
+			xlog.Err("dbClean db.Exec error :" + err.Error())
+		}
+		xmutex.Unlock()
+		// Clean every day
+		time.Sleep(24 * time.Hour)
+	}
 }
