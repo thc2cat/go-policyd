@@ -183,6 +183,7 @@ func policyVerify(x connData, db *sql.DB) string {
 	dberr := db.Ping()
 	if dberr != nil {
 		xlog.Err("Skipping policyVerify db.Ping Error: " + dberr.Error())
+		// Ref : https://github.com/go-sql-driver/mysql/issues/921
 		db.Exec("SELECT NOW()") // Generate an error for db recovery
 		return "DUNNO"          // always return DUNNO on error
 	}
