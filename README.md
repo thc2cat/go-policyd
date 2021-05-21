@@ -1,13 +1,15 @@
-# ![lock](contrib/24-security-lock.png) go-policyd : a simple Postfix Policyd Rate limiter
+# ![lock](contrib/24-security-lock.png) go-policyd : a simple sender policy rate limit daemon for Postfix
 
 [![Build Status](https://travis-ci.com/thc2cat/go-policyd.svg?branch=for_github)](https://travis-ci.org/thc2cat/go-policyd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/thc2cat/go-policyd)](https://goreportcard.com/report/github.com/thc2cat/go-policyd)
 
-go-policyd project purpose is to limit postfix spam volume emission sent via authenticated abused user when phishing succeeds.
+go-policyd project purpose is to limit postfix spam volume emission sent via `authenticated` abused user when phishing succeeds.
 
-This daemon has been written from a existing policyd daemon : [polka](https://github.com/SimoneLazzaris/polka)
+This daemon has been inspired from a existing policyd daemon : [polka](https://github.com/SimoneLazzaris/polka)
 
-go-policyd use postfix policy protocol (check [Postfix SMTP Access Policy Delegation](http://www.postfix.org/SMTPD_POLICY_README.html)), and based on recipients numbers cumulated by day respond DUNNO (neutral)/ HOLD (store in quarantine)/ REJECT ( refuse mail.).
+go-policyd use postfix policy protocol (check [Postfix SMTP Access Policy Delegation](http://www.postfix.org/SMTPD_POLICY_README.html)).
+
+Based on recipients numbers cumulated by day it responds DUNNO (neutral)/ HOLD (store in quarantine)/ REJECT ( refuse mail.).
 
 Using a centralized database, it may be used for multiple authenticated postfix relays.
 
@@ -15,23 +17,25 @@ Using this projects we successfully reduced our spam volume during phishing camp
 
 ## Main features
 
-  ![accept.png](contrib/accept.png) Single binary serving as network daemon, allowing multiple remote postfix smtps centralisation.
+  ![accept.png](contrib/accept.png) Quota of total recipients by day for an authenticated sender.
 
-  ![accept.png](contrib/accept.png) Mysql(Mariadb) storage of policyd events.
-
-  ![accept.png](contrib/accept.png) Quota of total recipients by day for an authenticated sender (max 1500 recipients).
+  ![accept.png](contrib/accept.png) Persistant Mysql(Mariadb) storage of policyd events.
 
   ![accept.png](contrib/accept.png) Hold queue when over quota for mail analysis and requeue if whitelisting or errors.
 
   ![accept.png](contrib/accept.png) Rejection when recipients sum is over 2x quota max (3000)
 
+  ![accept.png](contrib/accept.png) Single binary serving as network daemon, allowing multiple remote postfix smtps centralisation.
+
   ![accept.png](contrib/accept.png) Whitelisting is available during offices hours ( not Week Ends ). Blacklisted entries are permanent.
+
+  ![accept.png](contrib/accept.png) Skip mode when database can't be accessed.
 
 ## Build
 
-"go build" should download dependencies and build binary
+Usual go commands, such as "go mod tidy", "go build" should download dependencies and build binary
 
-Using Makefile
+Version tag is given from git tag , a simple makefile is :
 
 ```Makefile
 NAME= $(notdir $(shell pwd))
@@ -43,22 +47,11 @@ TAG=$(shell git tag)
 
 ## How to use go-policyd step by step
 
-* Configure postfix for policyd restrictions
-* Create mariadb database
+* Create mariadb database,
 * copy binary  in __/local/bin/policyd__,
-* Adapt config file contrib/policyd.cfg to  __/etc/postfix/policyd.cfg__
-* Enable and start (CentOS systemd) service  __/local/etc/policyd.service__
-
-## Postfix Configuration
-
-Edit `/etc/postfix/main.cf` to add :
-
-```shell
-# Policyd restrictions ( at end_of_data stage for nbrcpt )
-smtpd_end_of_data_restrictions = check_policy_service inet:127.0.0.1:9093
-```
-
-Then verify configuration with `postfix check` command
+* Adapt config file contrib/policyd.cfg to  __/etc/postfix/policyd.cfg__,
+* Enable and start (CentOS systemd) service  __/local/etc/policyd.service__,
+* Configure postfix for policyd restrictions.
 
 ## Mariadb SQL database creation
 
@@ -89,6 +82,7 @@ __Nota__ :
 * DATETIME(3) avoid key collision when multiples connections occurs.
 * The cleaning of records older than 7 days is done daily every 24 hours.
 * A policyd top 20 usage display utility is available in **contrib/policyd-top20.sh**
+* sasl_username length `may be an issue` for you if your logins length are over 8 chars
 
 ## CentOS Systemd daemon setup
 
@@ -106,6 +100,17 @@ __Nota__ :
 ```
 
 Binary and config file localisation may be modified
+
+## Postfix Configuration
+
+Edit `/etc/postfix/main.cf` to add :
+
+```shell
+# Policyd restrictions ( at end_of_data stage for nbrcpt )
+smtpd_end_of_data_restrictions = check_policy_service inet:127.0.0.1:9093
+```
+
+Then verify configuration with `postfix check` command
 
 ## Monit check (optional)
 
@@ -150,3 +155,22 @@ Sep 26 16:27:53 smtps policyd[18771]: Updating db: anaxxx/anabelle.xxxxxxx@mydom
 ```
 
 indicates the sending of an email to 2 recipients, bringing the total of recipients over 24 hours to 50.
+
+## Additional internal Postfix rate limits
+
+```shell
+# tail /etc/postfix/main.cf 
+
+# For denial of service mitigations (by ip) please read : 
+# http://www.postfix.org/TUNING_README.html#conn_limit
+# http://www.jonsblog.org/2011/11/30/stay-off-of-blacklists-limit-postfix-recipients/
+# anvil_rate_time_unit (default: 60s).
+anvil_rate_time_unit=1h
+smtpd_client_connection_count_limit=10
+smtpd_client_connection_rate_limit=120
+smtpd_client_message_rate_limit=120
+smtpd_client_recipient_rate_limit=1000
+smtpd_client_event_limit_exceptions=127.0.0.1 <hosts> ...
+```
+
+## Please clone, star, comment, fork, and adapt to your needs
