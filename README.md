@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.com/thc2cat/go-policyd.svg?branch=for_github)](https://travis-ci.org/thc2cat/go-policyd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/thc2cat/go-policyd)](https://goreportcard.com/report/github.com/thc2cat/go-policyd)
+[![release](https://badges.genua.fr/github/tag/thc2cat/go-policyd.svg?label=release)](https://github.com/thc2cat/go-policyd/releases/latest)
 
 go-policyd project purpose is to limit postfix spam volume emission sent via `authenticated` abused user when phishing succeeds.
 
@@ -19,13 +20,13 @@ Using this projects we successfully reduced our spam volume during phishing camp
 
   ![accept.png](contrib/accept.png) Quota of total recipients by day for an authenticated sender.
 
-  ![accept.png](contrib/accept.png) Persistant Mysql(Mariadb) storage of policyd events.
-
   ![accept.png](contrib/accept.png) Hold queue when over quota for mail analysis and requeue if whitelisting or errors.
 
-  ![accept.png](contrib/accept.png) Rejection when recipients sum is over 2x quota max (3000)
+  ![accept.png](contrib/accept.png) Rejection when recipients sum is over 2x quota max (customizable)
 
-  ![accept.png](contrib/accept.png) Single binary serving as network daemon, allowing multiple remote postfix smtps centralisation.
+  ![accept.png](contrib/accept.png) Persistant Mysql/Mariadb storage of policyd events.
+
+  ![accept.png](contrib/accept.png) `Single binary` serving as network daemon, allowing multiple remote postfix smtps centralisation.
 
   ![accept.png](contrib/accept.png) Whitelisting is available during offices hours ( not Week Ends ). Blacklisted entries are permanent.
 
@@ -33,7 +34,7 @@ Using this projects we successfully reduced our spam volume during phishing camp
 
 ## Build
 
-Usual go commands, such as "go mod tidy", "go build" should download dependencies and build binary
+Usual go commands, such as `go mod tidy`, `go build` should download dependencies and build binary
 
 Version tag is given from git tag , a simple makefile is :
 
@@ -82,7 +83,8 @@ __Nota__ :
 * DATETIME(3) avoid key collision when multiples connections occurs.
 * The cleaning of records older than 7 days is done daily every 24 hours.
 * A policyd top 20 usage display utility is available in **contrib/policyd-top20.sh**
-* sasl_username length `may be an issue` for you if your logins length are over 8 chars
+
+> **_warning_ :**  sasl_username length `may be an issue` for you if your logins length are over 8 chars
 
 ## CentOS Systemd daemon setup
 
@@ -173,4 +175,4 @@ smtpd_client_recipient_rate_limit=1000
 smtpd_client_event_limit_exceptions=127.0.0.1 <hosts> ...
 ```
 
-## Please clone, star, comment, fork, and adapt to your needs
+### Please clone, star, comment, fork, adapt to your needs, and let me know what we can improve

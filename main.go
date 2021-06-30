@@ -18,7 +18,6 @@ package main
 // 0.76: SQL INSERT modified to cure SQL potential injections
 // 0.77: SQL DB.Exec recovery when DB.Ping() fail
 //
-// TODO : with context for DB blackout.
 
 import (
 	"bufio"

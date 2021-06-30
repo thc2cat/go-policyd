@@ -1,4 +1,4 @@
-module projects/policyd
+module go-policyd
 
 go 1.16
 
