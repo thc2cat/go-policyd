@@ -4,7 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/thc2cat/go-policyd)](https://goreportcard.com/report/github.com/thc2cat/go-policyd)
 [![release](https://badges.genua.fr/github/tag/thc2cat/go-policyd.svg?label=release)](https://github.com/thc2cat/go-policyd/releases/latest)
 
-go-policyd project purpose is to limit postfix spam volume emission sent via `authenticated` abused user when phishing succeeds.
+go-policyd project purpose is to rate limit postfix outgoing emails sent per user via 'authenticated' abused user when phishing succeeds.
 
 This daemon has been inspired from a existing policyd daemon : [polka](https://github.com/SimoneLazzaris/polka)
 
