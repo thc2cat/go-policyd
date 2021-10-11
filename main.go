@@ -155,6 +155,7 @@ func policyVerify(x connData, db *sql.DB) string {
 
 	switch {
 
+	// This may be an issue if your logins are > 8 char length
 	case len(x.saslUsername) > 8:
 		xlog.Info(fmt.Sprintf("REJECT saslUsername too long: %s",
 			x.saslUsername))

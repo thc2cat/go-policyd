@@ -158,6 +158,20 @@ Sep 26 16:27:53 smtps policyd[18771]: Updating db: anaxxx/anabelle.xxxxxxx@mydom
 
 indicates the sending of an email to 2 recipients, bringing the total of recipients over 24 hours to 50.
 
+## Postfix re-enqueuing, and mail queue cleaning
+
+Legit messages can be re-enqueued after policyd user whitelisting reconfiguration and a restart of policyd daemon, with commands like :
+
+```shell
+# postqueue -p | grep legit-user | awk '{ print $1 }' | sed "s/\!//g" | xargs -n 1  postsuper -r
+```
+
+Cleaning of spam/phishing can be done with :
+
+```shell
+# cd /var/spool/postfix/hold ; ls | postsuper -d -
+```
+
 ## Additional internal Postfix rate limits
 
 ```shell
