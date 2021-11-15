@@ -17,6 +17,7 @@ package main
 // 0.75: whitelisted only during workinghours, and not weekend
 // 0.76: SQL INSERT modified to cure SQL potential injections
 // 0.77: SQL DB.Exec recovery when DB.Ping() fail
+// 0.77.1 : gocritics corrections
 //
 
 import (
@@ -83,16 +84,16 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	defer db.Close()
 
 	go dbClean(db)
+
+	defer db.Close()
 
 	for {
 		// Listen for an incoming connection.
 		conn, err := l.Accept()
 		if err != nil {
-			xlog.Err("Error accepting: " + err.Error())
-			os.Exit(1)
+			log.Panic("Error accepting: " + err.Error())
 		}
 		go handleRequest(conn, db)
 	}
@@ -101,9 +102,6 @@ func main() {
 // Handles incoming requests.
 func handleRequest(conn net.Conn, db *sql.DB) {
 	var xdata connData
-
-	// fmt.Println("->Entering handleRequest")
-	// defer fmt.Println("<-Exiting handleRequest")
 
 	reader := bufio.NewReader(conn)
 	for {
@@ -143,7 +141,7 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 
 	resp := policyVerify(xdata, db) // Here, where the magic happen
 
-	conn.Write([]byte(fmt.Sprintf("action=%s\n\n", resp)))
+	fmt.Fprintf(conn, "action=%s\n\n", resp)
 	conn.Close()
 }
 

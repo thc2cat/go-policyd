@@ -4,9 +4,11 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/thc2cat/go-policyd)](https://goreportcard.com/report/github.com/thc2cat/go-policyd)
 [![release](https://badges.genua.fr/github/tag/thc2cat/go-policyd.svg?label=release)](https://github.com/thc2cat/go-policyd/releases/latest)
 
-go-policyd project purpose is to rate limit postfix outgoing emails sent per user via 'authenticated' abused user when phishing succeeds.
+go-policyd is an anti-spam plugin for Postfix (written in Golang) that does sasl-based throttling.
 
-This daemon has been inspired from a existing policyd daemon : [polka](https://github.com/SimoneLazzaris/polka)
+Project purpose is to rate limit postfix outgoing emails sent per user via 'authenticated' abused user when phishing succeeds.
+
+This daemon has been inspired from a existing policyd golang daemon : [polka](https://github.com/SimoneLazzaris/polka)
 
 go-policyd use postfix policy protocol (check [Postfix SMTP Access Policy Delegation](http://www.postfix.org/SMTPD_POLICY_README.html)).
 
@@ -144,10 +146,17 @@ Sep 23 11:09:03 smtps policyd[8168]: ERROR while UPDATING db :dial tcp 127.0.0.1
 Sep 25 11:19:55 smtps systemd: Failed to start Policyd go daemon for Postfix.
 Sep 25 11:20:20 smtps systemd: Failed to start Policyd go daemon for Postfix.
 
+Nov  9 04:28:46 smtps policyd[25479]: Skipping policyVerify db.Ping Error: driver: bad connection
+
+
 # tail /var/log/daemon.info
 Sep 26 16:23:34 smtps policyd[18771]: Updating db: nathxxx/nathalie.xxxxxxxx@mydomain.fr/192.168.39.7/1/6
 Sep 26 16:24:22 smtps policyd[18771]: Updating db: anaxxx/anabelle.xxxxxxx@mydomain.fr/192.168.39.96/1/46
 Sep 26 16:28:15 smtps policyd[18771]: Updating db: marxxx/maria.xxxxxxx@sub.mydomain.fr/192.168.24.154/1/14
+
+Nov  9 04:28:46 smtps policyd: [mysql] 2021/11/09 04:28:46 packets.go:123: closing bad idle connection: unexpected read from socket
+Nov  9 04:28:46 smtps policyd[25479]: Skipping policyVerify db.Ping Error: driver: bad connection
+
 ```
 
 The log format is identifier / email / ip / recipients / recipientssumforthelast24h.
@@ -189,4 +198,8 @@ smtpd_client_recipient_rate_limit=1000
 smtpd_client_event_limit_exceptions=127.0.0.1 <hosts> ...
 ```
 
-### Please clone, star, comment, fork, adapt to your needs, and let me know what we can improve
+## Going further
+
+Code is short and basic. It is intended to be adapted to suit your needs with few modifications.
+
+So clone, fork, (star,) comment, adapt to your needs, and let me know what we can improve !
