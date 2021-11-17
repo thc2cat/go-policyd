@@ -4,17 +4,18 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/thc2cat/go-policyd)](https://goreportcard.com/report/github.com/thc2cat/go-policyd)
 [![release](https://badges.genua.fr/github/tag/thc2cat/go-policyd.svg?label=release)](https://github.com/thc2cat/go-policyd/releases/latest)
 
-go-policyd is an anti-spam plugin for Postfix (written in Golang) that does sasl-based throttling.
+`go-policyd` is an anti-spam plugin for Postfix (written in Golang) that does sasl-based throttling.
 
 Project purpose is to rate limit postfix outgoing emails sent per user via 'authenticated' abused user when phishing succeeds.
 
-This daemon has been inspired from a existing policyd golang daemon : [polka](https://github.com/SimoneLazzaris/polka)
+This daemon has been inspired from a existing policy golang daemon : [polka](https://github.com/SimoneLazzaris/polka).
+Go language is easy to [install](https://golang.org/doc/install), making this project easy to read and adapt to suit your needs.
 
-go-policyd use postfix policy protocol (check [Postfix SMTP Access Policy Delegation](http://www.postfix.org/SMTPD_POLICY_README.html)).
+`go-policyd` use postfix policy protocol (check [Postfix SMTP Access Policy Delegation](http://www.postfix.org/SMTPD_POLICY_README.html)).
 
 Based on recipients numbers cumulated by day it responds DUNNO (neutral)/ HOLD (store in quarantine)/ REJECT ( refuse mail.).
 
-Using a centralized database, it may be used for multiple authenticated postfix relays.
+Using a centralized database, it may be used for multiple authenticated postfix relays or clustering.
 
 Using this projects we successfully reduced our spam volume during phishing campaigns from 60.000 users spammed to 1500 per day.
 
@@ -28,11 +29,11 @@ Using this projects we successfully reduced our spam volume during phishing camp
 
   ![accept.png](contrib/accept.png) Persistant Mysql/Mariadb storage of policyd events.
 
-  ![accept.png](contrib/accept.png) `Single binary` serving as network daemon, allowing multiple remote postfix smtps centralisation.
+  ![accept.png](contrib/accept.png) Easy upgrade of a `Single binary` serving as network daemon, allowing multiple remote postfix smtps (de)centralisation.
 
-  ![accept.png](contrib/accept.png) Whitelisting is available during offices hours ( not Week Ends ). Blacklisted entries are permanent.
+  ![accept.png](contrib/accept.png) Whitelisting only during offices hours (not weekends). Blacklisted entries are permanent.
 
-  ![accept.png](contrib/accept.png) Skip mode when database can't be accessed.
+  ![accept.png](contrib/accept.png) Default accept mode when encountering database issues.
 
 ## Build
 
