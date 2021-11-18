@@ -204,3 +204,5 @@ smtpd_client_event_limit_exceptions=127.0.0.1 <hosts> ...
 Code is short and basic. It is intended to be adapted to suit your needs with few modifications.
 
 So clone, fork, (star,) comment, adapt to your needs, and let me know what we can improve !
+
+![.](https://pixelgif.dll.prism.uvsq.fr/pixel.gif?github-go-policyd)
