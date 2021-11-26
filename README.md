@@ -1,4 +1,4 @@
-# ![lock](contrib/24-security-lock.png) go-policyd : a simple sender policy rate limit daemon for Postfix
+# ![lock](docs/24-security-lock.png) go-policyd : Postfix policyd daemon
 
 [![Build Status](https://travis-ci.com/thc2cat/go-policyd.svg?branch=for_github)](https://travis-ci.org/thc2cat/go-policyd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/thc2cat/go-policyd)](https://goreportcard.com/report/github.com/thc2cat/go-policyd)
@@ -21,19 +21,19 @@ Using this projects we successfully reduced our spam volume during phishing camp
 
 ## Main features
 
-  ![accept.png](contrib/accept.png) Quota of total recipients by day for an authenticated sender.
+  ![accept.png](docs/accept.png) Quota of total recipients by day for an authenticated sender.
 
-  ![accept.png](contrib/accept.png) Hold queue when over quota for mail analysis and requeue if whitelisting or errors.
+  ![accept.png](docs/accept.png) Hold queue when over quota for mail analysis and requeue if whitelisting or errors.
 
-  ![accept.png](contrib/accept.png) Rejection when recipients sum is over 2x quota max (customizable)
+  ![accept.png](docs/accept.png) Rejection when recipients sum is over 2x quota max (customizable)
 
-  ![accept.png](contrib/accept.png) Persistant Mysql/Mariadb storage of policyd events.
+  ![accept.png](docs/accept.png) Persistant Mysql/Mariadb storage of policyd events.
 
-  ![accept.png](contrib/accept.png) Easy upgrade of a `Single binary` serving as network daemon, allowing multiple remote postfix smtps (de)centralisation.
+  ![accept.png](docs/accept.png) Easy upgrade of a `Single binary` serving as network daemon, allowing multiple remote postfix smtps (de)centralisation.
 
-  ![accept.png](contrib/accept.png) Whitelisting only during offices hours (not weekends). Blacklisted entries are permanent.
+  ![accept.png](docs/accept.png) Whitelisting only during offices hours (not weekends). Blacklisted entries are permanent.
 
-  ![accept.png](contrib/accept.png) Default accept mode when encountering database issues.
+  ![accept.png](docs/accept.png) Default accept mode when encountering database issues.
 
 ## Build
 
