@@ -4,7 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/thc2cat/go-policyd)](https://goreportcard.com/report/github.com/thc2cat/go-policyd)
 [![release](https://badges.genua.fr/github/tag/thc2cat/go-policyd.svg?label=release)](https://github.com/thc2cat/go-policyd/releases/latest)
 
-`go-policyd` is an anti-spam plugin for Postfix (written in Golang) that does sasl-based throttling.
+`go-policyd` is a Golang-based anti-spam plugin for Postfix that helps combat phishing attacks by limiting the number of emails a user can send per day.
 
 Project purpose is to rate limit postfix outgoing emails sent per user via 'authenticated' abused user when phishing succeeds.
 
