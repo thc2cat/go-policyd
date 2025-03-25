@@ -17,7 +17,7 @@ Go language is easy to [install](https://golang.org/doc/install), making this pr
 
 `go-policyd` use postfix policy protocol (check [Postfix SMTP Access Policy Delegation](http://www.postfix.org/SMTPD_POLICY_README.html)).
 
-# Core Functionality
+## Core Functionality
 
 The daemon acts as a policy server for Postfix, intercepting SMTP connections after authentication.  It queries a MySQL database to determine the number of recipients a user has sent emails to within a defined time window (e.g., 24 hours). Based on pre-configured limits, it takes one of three actions:
 
