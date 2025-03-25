@@ -4,6 +4,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/thc2cat/go-policyd)](https://goreportcard.com/report/github.com/thc2cat/go-policyd)
 [![release](https://badges.genua.fr/github/tag/thc2cat/go-policyd.svg?label=release)](https://github.com/thc2cat/go-policyd/releases/latest)
 
+Postfix SMTP Policyd Daemon with MySQL Recipient Tracking and Quarantining
+
 `go-policyd` is an anti-spam plugin for Postfix (written in Golang) that does sasl-based throttling.
 
 Project purpose is to rate limit postfix outgoing emails sent per user via 'authenticated' abused user when phishing succeeds.
@@ -11,7 +13,19 @@ Project purpose is to rate limit postfix outgoing emails sent per user via 'auth
 This daemon has been inspired from a existing policy golang daemon : [polka](https://github.com/SimoneLazzaris/polka).
 Go language is easy to [install](https://golang.org/doc/install), making this project easy to read and adapt to suit your needs.
 
+`go-policyd` is a postfix SMTP policyd daemon designed to control email recipient limits for authenticated users, leveraging a MySQL database for tracking and implementing a tiered approach (allowing, then quarantining, then rejecting).
+
 `go-policyd` use postfix policy protocol (check [Postfix SMTP Access Policy Delegation](http://www.postfix.org/SMTPD_POLICY_README.html)).
+
+# Core Functionality
+
+The daemon acts as a policy server for Postfix, intercepting SMTP connections after authentication.  It queries a MySQL database to determine the number of recipients a user has sent emails to within a defined time window (e.g., 24 hours). Based on pre-configured limits, it takes one of three actions:
+
+- Allow: If the recipient count is below the "allow" limit, the email is accepted, and the recipient count in the database is incremented.  The email proceeds to the next stage of Postfix processing.
+
+- Quarantine: If the recipient count exceeds the "allow" limit but is below the "reject" limit, the email is accepted, but the message is tagged or routed to a quarantine mailbox. The recipient count in the database is incremented.  This allows administrators to review potentially problematic emails before they are delivered.  A notification could be sent to the user about their quarantine status.
+
+- Reject: If the recipient count exceeds the "reject" limit, the email is rejected with a specific SMTP error code (e.g., 550 5.7.1 Too many recipients).  The recipient count is not incremented in this case.  A clear and informative rejection message should be provided to the sender.
 
 Based on recipients numbers cumulated by day it responds DUNNO (neutral)/ HOLD (store in quarantine)/ REJECT ( refuse mail.).
 
@@ -31,7 +45,9 @@ Using this projects we successfully reduced our spam volume during phishing camp
 
   ![accept.png](docs/accept.png) Easy upgrade of a `Single binary` serving as network daemon, allowing multiple remote postfix smtps (de)centralisation.
 
-  ![accept.png](docs/accept.png) Whitelisting only during offices hours (not weekends). Blacklisted entries are permanent.
+  ![accept.png](docs/accept.png) Permanent Whitelisting during offices hours and weekends for users sending to thousands emails. Blacklisted entries are also permanent.
+
+  ![accept.png](docs/accept.png) Blacklisted users mail is directly put in hold queue for analysis.
 
   ![accept.png](docs/accept.png) Default accept mode when encountering database issues.
 
@@ -51,11 +67,11 @@ TAG=$(shell git tag)
 
 ## How to use go-policyd step by step
 
-* Create mariadb database,
-* copy binary  in __/local/bin/policyd__,
-* Adapt config file contrib/policyd.cfg to  __/etc/postfix/policyd.cfg__,
-* Enable and start (CentOS systemd) service  __/local/etc/policyd.service__,
-* Configure postfix for policyd restrictions.
+- Create mariadb database,
+- copy binary  in __/local/bin/policyd__,
+- Adapt config file contrib/policyd.cfg to  __/etc/postfix/policyd.cfg__,
+- Enable and start (CentOS systemd) service  __/local/etc/policyd.service__,
+- Configure postfix for policyd restrictions.
 
 ## Mariadb SQL database creation
 
@@ -83,11 +99,11 @@ Query OK, 0 rows affected (0.00 sec)
 
 __Nota__ :
 
-* DATETIME(3) avoid key collision when multiples connections occurs.
-* The cleaning of records older than 7 days is done daily every 24 hours.
-* A policyd top 20 usage display utility is available in **contrib/policyd-top20.sh**
+- DATETIME(3) avoid key collision when multiples connections occurs.
+- The cleaning of records older than 7 days is done daily every 24 hours.
+- A policyd top 20 usage display utility is available in __contrib/policyd-top20.sh__
 
-> **_warning_ :**  sasl_username length `may be an issue` for you if your logins length are over 8 chars
+> ___warning_ :__  sasl_username length `may be an issue` for you if your logins length are over 8 chars
 
 ## CentOS Systemd daemon setup
 

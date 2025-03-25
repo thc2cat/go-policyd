@@ -18,6 +18,8 @@ package main
 // 0.76: SQL INSERT modified to cure SQL potential injections
 // 0.77: SQL DB.Exec recovery when DB.Ping() fail
 // 0.77.1 : gocritics corrections
+// 0.8 : gosec corrections
+// v0.9 : allow whitelisted users to bypass quota outside office hours
 //
 
 import (
@@ -45,13 +47,11 @@ type connData struct {
 var (
 	xmutex       sync.Mutex
 	defaultQuota int64
-
-	// Version is git tag version exported by Makefile
-	Version string
 )
 
 const (
 	syslogtag = "policyd"
+	Version   = "go-policyd-v0.9"
 	cfgfile   = "/etc/postfix/" + syslogtag + ".cfg"
 )
 
@@ -72,12 +72,15 @@ func main() {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)
 	}
-	defer l.Close()
+	// defer l.Close()
 
-	initSyslog(syslogtag)
+	if usesyslog {
+		initSyslog(syslogtag)
+	}
 
-	xlog.Info(fmt.Sprintf("%s started.", Version))
-	writePidfile("/var/run/" + syslogtag + ".pid")
+	mylog(fmt.Sprintf("%s started.", Version), "Info")
+
+	writePidfile(pidfile)
 
 	db, err := sql.Open("mysql",
 		fmt.Sprintf("%s:%s@/%s", cfg["dbuser"], cfg["dbpass"], cfg["dbname"]))
@@ -93,10 +96,14 @@ func main() {
 		// Listen for an incoming connection.
 		conn, err := l.Accept()
 		if err != nil {
+			if err := l.Close(); err != nil {
+				mylog("main"+err.Error(), "Err")
+			}
 			log.Panic("Error accepting: " + err.Error())
 		}
 		go handleRequest(conn, db)
 	}
+
 }
 
 // Handles incoming requests.
@@ -117,12 +124,13 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 		}
 		vv := strings.SplitN(s, "=", 2)
 		if len(vv) < 2 {
-			xlog.Err("Error processing line" + s)
+			mylog("Error processing line"+s, "Err")
 			continue
 		}
 
 		vv[0] = strings.Trim(vv[0], " \n\r")
 		vv[1] = strings.Trim(vv[1], " \n\r")
+
 		switch vv[0] {
 		case "sasl_username":
 			if strings.IndexByte(vv[1], '@') == -1 {
@@ -142,48 +150,83 @@ func handleRequest(conn net.Conn, db *sql.DB) {
 	resp := policyVerify(xdata, db) // Here, where the magic happen
 
 	fmt.Fprintf(conn, "action=%s\n\n", resp)
-	conn.Close()
+	if err := conn.Close(); err != nil {
+		mylog("handleRequest "+err.Error(), "Err")
+	}
 }
 
 func policyVerify(x connData, db *sql.DB) string {
 
 	var dbSum int64
+	var err error
 
-	// Block WeekEnd or out of office hours
+	// Check inputs
+	x.saslUsername, err = sanitizeByType(x.saslUsername, loginName)
+	if err != nil {
+		mylog(err.Error(), "Err")
+		return "HOLD saslUsername invalid"
+	}
+	x.sender, err = sanitizeByType(x.sender, mailregexp)
+	if err != nil {
+		mylog(err.Error(), "Err")
+		return "HOLD sender invalid"
+	}
+	x.clientAddress, err = sanitizeByType(x.clientAddress, ipregexp)
+	if err != nil {
+		mylog(err.Error(), "Err")
+		return "HOLD clientAdress invalid"
+
+	}
+	x.recipientCount, err = sanitizeByType(x.recipientCount, intregexp)
+	if err != nil {
+		mylog(err.Error(), "Err")
+		return "HOLD recipientCount invalid"
+	}
 
 	switch {
 
 	// This may be an issue if your logins are > 8 char length
 	case len(x.saslUsername) > 8:
-		xlog.Info(fmt.Sprintf("REJECT saslUsername too long: %s",
-			x.saslUsername))
-		return "REJECT saslUsername too long"
+		mylog(fmt.Sprintf("HOLD saslUsername too long: %s",
+			x.saslUsername), "Info")
+		return "HOLD saslUsername too long"
 
 	case x.saslUsername == "" || x.sender == "" || x.clientAddress == "":
-		return "REJECT missing infos"
+		mylog("HOLD empty values in saslUsername or sender or clientAddress", "Info")
+		return "HOLD missing infos"
 
 	case blacklisted(x):
-		xlog.Info(fmt.Sprintf("Holding blacklisted user: %s/%s/%s/%s",
+		mylog(fmt.Sprintf("HOLD blacklisted user: %s/%s/%s/%s",
 			x.saslUsername, x.sender, x.clientAddress,
-			x.recipientCount))
+			x.recipientCount), "Info")
 		return "HOLD blacklisted"
 
+	// Block WeekEnd or out of office hours
 	case officehourswhitelisted(x):
-		xlog.Info(fmt.Sprintf("skipping whitelisted user: %s/%s/%s/%s",
+
+		mylog(fmt.Sprintf("skipping whitelisted user: %s/%s/%s/%s",
 			x.saslUsername, x.sender, x.clientAddress,
-			x.recipientCount))
+			x.recipientCount), "Info")
+		return "DUNNO"
+
+	case whitelisted(x):
+		mylog(fmt.Sprintf("skipping whitelisted user (OUTSIDE OFFICE HOURS): %s/%s/%s/%s",
+			x.saslUsername, x.sender, x.clientAddress,
+			x.recipientCount), "Info")
 		return "DUNNO"
 	}
 
 	xmutex.Lock() // Use mutex because dbcleaning may occur at the same time.
 	defer xmutex.Unlock()
 
-	dberr := db.Ping()
-	if dberr != nil {
-		xlog.Err("Skipping policyVerify db.Ping Error: " + dberr.Error())
+	if dberr := db.Ping(); dberr != nil {
+		mylog("Skipping policyVerify db.Ping Error: "+dberr.Error(), "Err")
 		// Ref : https://github.com/go-sql-driver/mysql/issues/921
-		db.Exec("SELECT NOW()") // Generate an error for db recovery
-		return "DUNNO"          // always return DUNNO on error
+		if _, erre := db.Exec("SELECT NOW()"); erre != nil {
+			mylog("retrying db reconnection"+dberr.Error(), "Info")
+		}
+		// Generate an error for db recovery
+		return "DUNNO" // always return DUNNO on error
 	}
 
 	defer db.Exec("COMMMIT")
@@ -191,15 +234,16 @@ func policyVerify(x connData, db *sql.DB) string {
 	// use code in the form   => INSERT INTO TABLE users (fullname) VALUES (?)")
 	// sould avoid entries like =>   '); DROP TABLE users; --
 	// https://blog.sqreen.com/preventing-sql-injections-in-go-and-other-vulnerabilities/
+	// read also sanitize_test.go for examples
 
-	_, err := db.Exec("INSERT INTO "+cfg["policy_table"]+
-		"(sasl_username,sender,client_address,recipient_count) VALUES (?,?,?,?)",
-		x.saslUsername, x.sender, x.clientAddress, x.recipientCount)
+	INSERT := "INSERT INTO " + cfg["policy_table"] +
+		"(sasl_username,sender,client_address,recipient_count) VALUES (?,?,?,?)"
+	_, err = db.Exec(INSERT, x.saslUsername, x.sender, x.clientAddress, x.recipientCount)
 
 	if err != nil {
-		xlog.Err("ERROR while UPDATING db: " + err.Error())
+		mylog("ERROR while UPDATING db: "+err.Error(), "Err")
 		time.Sleep(3 * time.Second) // Mutex + delay = secure mysql primary key
-		xlog.Info("Rate limited similar requests, sleeped for a 3 secs...")
+		mylog("Rate limited similar requests, sleeped for a 3 secs...", "Info")
 	}
 
 	sumerr := db.QueryRow("SELECT SUM(recipient_count) FROM "+cfg["policy_table"]+
@@ -207,27 +251,27 @@ func policyVerify(x connData, db *sql.DB) string {
 		x.saslUsername).Scan(&dbSum)
 
 	if sumerr != nil {
-		//  ErrNoRow leads to "converting NULL to int64 is unsupported"
+		// ErrNoRow leads to "converting NULL to int64 is unsupported"
 		// lets consider it's a new entry.
 		dbSum = 0
 	}
 
 	//  Add new entry first, ensuring correct SUM
-	xlog.Info(fmt.Sprintf("Updating db: %s/%s/%s/%s/%v",
+	mylog(fmt.Sprintf("Updating db: %s/%s/%s/%s/%v",
 		x.saslUsername, x.sender, x.clientAddress,
-		x.recipientCount, dbSum))
+		x.recipientCount, dbSum), "Info")
 
 	switch {
 	case dbSum >= 2*defaultQuota:
-		xlog.Info(fmt.Sprintf("REJECTING overquota (%v>2x%v) for user %s using %s from ip [%s]",
+		mylog(fmt.Sprintf("REJECTING overquota (%v>2x%v) for user %s using %s from ip [%s]",
 			dbSum, defaultQuota, x.saslUsername, x.sender,
-			x.clientAddress))
+			x.clientAddress), "Info")
 		return "REJECT max quota exceeded"
 
 	case dbSum >= defaultQuota:
-		xlog.Info(fmt.Sprintf("DEFERRING overquota (%v>%v) for user %s using %s from ip [%s]",
+		mylog(fmt.Sprintf("DEFERRING overquota (%v>%v) for user %s using %s from ip [%s]",
 			dbSum, defaultQuota, x.saslUsername, x.sender,
-			x.clientAddress))
+			x.clientAddress), "Info")
 		return "HOLD quota exceeded"
 
 	default:
@@ -267,15 +311,21 @@ func blacklisted(d connData) bool {
 
 // dbClean delete 7 days old entries in db every 24h.
 func dbClean(db *sql.DB) {
+	table, err := sanitizeSql(cfg["policy_table"])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	expire := "DELETE from " + table +
+		" where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)"
 	for {
 		xmutex.Lock()
-		err := db.Ping()
-		if err == nil {
-			// Keep 7 days in db
-			db.Exec("DELETE from " + cfg["policy_table"] +
-				" where ts<SUBDATE(CURRENT_TIMESTAMP(3), INTERVAL 7 DAY)")
-		} else {
-			xlog.Err("dbClean db.Exec error :" + err.Error())
+		if err := db.Ping(); err != nil {
+			mylog("dbClean db.Ping error :"+err.Error(), "Err")
+		}
+		// Executing db.Exec force db reconnection.
+		if _, errexec := db.Exec(expire); errexec != nil {
+			mylog("dbclean db.exec"+errexec.Error(), "Err")
 		}
 		xmutex.Unlock()
 		// Clean every day
