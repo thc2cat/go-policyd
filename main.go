@@ -201,19 +201,22 @@ func policyVerify(x connData, db *sql.DB) string {
 			x.recipientCount), "Info")
 		return "HOLD blacklisted"
 
-	// Block WeekEnd or out of office hours
-	case officehourswhitelisted(x):
-
-		mylog(fmt.Sprintf("skipping whitelisted user: %s/%s/%s/%s",
-			x.saslUsername, x.sender, x.clientAddress,
-			x.recipientCount), "Info")
-		return "DUNNO"
-
 	case inList(x, inwhitelist):
 		mylog(fmt.Sprintf("skipping whitelisted user (OUTSIDE OFFICE HOURS): %s/%s/%s/%s",
 			x.saslUsername, x.sender, x.clientAddress,
 			x.recipientCount), "Info")
 		return "DUNNO"
+
+		// Block WeekEnd or out of office hours
+		// case officehourswhitelisted(x):
+
+		// 	mylog(fmt.Sprintf("skipping whitelisted user: %s/%s/%s/%s",
+		// 		x.saslUsername, x.sender, x.clientAddress,
+		// 		x.recipientCount), "Info")
+		// 	return "DUNNO"
+
+		// default: is to continue to check quota
+
 	}
 
 	xmutex.Lock() // Use mutex because dbcleaning may occur at the same time.
@@ -280,17 +283,17 @@ func policyVerify(x connData, db *sql.DB) string {
 }
 
 // Check officeours only whitelisting
-func officehourswhitelisted(x connData) bool {
-	var officehours, weekend bool
+// func officehourswhitelisted(x connData) bool {
+// 	var officehours, weekend bool
 
-	if h, _, _ := time.Now().Clock(); h >= 7 && h <= 19 {
-		officehours = true
-	}
-	if d := int(time.Now().Weekday()); d == 7 || d == 0 {
-		weekend = true
-	}
-	return officehours && !weekend && inList(x, inwhitelist)
-}
+// 	if h, _, _ := time.Now().Clock(); h >= 7 && h <= 19 {
+// 		officehours = true
+// 	}
+// 	if d := int(time.Now().Weekday()); d == 7 || d == 0 {
+// 		weekend = true
+// 	}
+// 	return officehours && !weekend && inList(x, inwhitelist)
+// }
 
 // inList check if a user is in a list inwhitelist or inblacklist
 func inList(d connData, list map[string]bool) bool {
