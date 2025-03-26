@@ -37,13 +37,42 @@ func Test_sanitizeSql(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := sanitizeSql(tt.args.name)
+			got, err := sanitize(tt.args.name)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("sanitizeSql() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
 				t.Errorf("sanitizeSql() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_sanitizeByType(t *testing.T) {
+
+	tests := []struct {
+		name     string
+		sanitype sanitRxp
+		want     string
+		wantErr  bool
+	}{
+		{"numeric", intregexp, "1234567890", false},
+		{"alphanum", loginName, "1234567890abcdEFG", false},
+		{"email", mailregexp, "machin@truc-autre.com", false},
+		{"ip", ipregexp, "127.0.0.10", false},
+		{"file", fileName, "/etc/postfix/go-policyd.cfg", false},
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := sanitizeByType(tt.want, tt.sanitype)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("sanitizeByType() error = \"%v\", wantErr \"%v\"", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("sanitizeByType() = \"%v\", want \"%v\"", got, tt.want)
 			}
 		})
 	}

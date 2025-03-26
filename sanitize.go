@@ -5,28 +5,28 @@ import (
 	"regexp"
 )
 
-var (
-	validName = regexp.MustCompile(`^[a-zA-Z0-9_@\.\-]+$`)
-
-	loginName  = regexp.MustCompile(`^[a-zA-Z0-9_@\.\-]+$`)
-	ipregexp   = regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`)
-	intregexp  = regexp.MustCompile(`^([0-9]{4})$`)
-	mailregexp = regexp.MustCompile(`^[a-zA-Z0-9_\.\-]+@[a-zA-Z0-9_\.\-]+$`)
-)
-
-func sanitizeSql(name string) (string, error) {
-	// Use a regular expression to match only valid table name characters
-
-	if !validName.MatchString(name) {
-		return "", fmt.Errorf("invalid name: %s", name)
-	}
-	return name, nil
+type sanitRxp struct {
+	name string
+	rxp  *regexp.Regexp
 }
 
-func sanitizeByType(name string, match *regexp.Regexp) (string, error) {
+var (
+	validName  = sanitRxp{"Name", regexp.MustCompile(`^[a-zA-Z0-9_@\.\-]+$`)}
+	fileName   = sanitRxp{"File", regexp.MustCompile(`^[a-zA-Z0-9_@\.\-\/]+$`)}
+	loginName  = sanitRxp{"Login", regexp.MustCompile(`^[a-zA-Z0-9_@\.\-]+$`)}
+	ipregexp   = sanitRxp{"IP", regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`)}
+	intregexp  = sanitRxp{"Int", regexp.MustCompile(`^([0-9]+)$`)}
+	mailregexp = sanitRxp{"Mail", regexp.MustCompile(`^[a-zA-Z0-9_\.\-]+@[a-zA-Z0-9_\.\-]+$`)}
+)
+
+func sanitize(s string) (string, error) {
+	return sanitizeByType(s, validName)
+}
+
+func sanitizeByType(name string, match sanitRxp) (string, error) {
 	// Use a regular expression to match only valid table name characters
-	if !match.MatchString(name) {
-		return "", fmt.Errorf("sanitizeByType error with: %s", name)
+	if !match.rxp.MatchString(name) {
+		return "", fmt.Errorf("sanitizeByType error with type %s for value \"%s\"", match.name, name)
 	}
 	return name, nil
 }

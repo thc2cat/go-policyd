@@ -195,7 +195,7 @@ func policyVerify(x connData, db *sql.DB) string {
 		mylog("HOLD empty values in saslUsername or sender or clientAddress", "Info")
 		return "HOLD missing infos"
 
-	case blacklisted(x):
+	case inList(x, inblacklist):
 		mylog(fmt.Sprintf("HOLD blacklisted user: %s/%s/%s/%s",
 			x.saslUsername, x.sender, x.clientAddress,
 			x.recipientCount), "Info")
@@ -209,7 +209,7 @@ func policyVerify(x connData, db *sql.DB) string {
 			x.recipientCount), "Info")
 		return "DUNNO"
 
-	case whitelisted(x):
+	case inList(x, inwhitelist):
 		mylog(fmt.Sprintf("skipping whitelisted user (OUTSIDE OFFICE HOURS): %s/%s/%s/%s",
 			x.saslUsername, x.sender, x.clientAddress,
 			x.recipientCount), "Info")
@@ -289,21 +289,14 @@ func officehourswhitelisted(x connData) bool {
 	if d := int(time.Now().Weekday()); d == 7 || d == 0 {
 		weekend = true
 	}
-	return officehours && !weekend && whitelisted(x)
+	return officehours && !weekend && inList(x, inwhitelist)
 }
 
-func whitelisted(d connData) bool {
-	if inwhitelist[d.saslUsername] ||
-		inwhitelist[d.sender] ||
-		inwhitelist[d.clientAddress] {
-		return true
-	}
-	return false
-}
-func blacklisted(d connData) bool {
-	if inblacklist[d.saslUsername] ||
-		inblacklist[d.sender] ||
-		inblacklist[d.clientAddress] {
+// inList check if a user is in a list inwhitelist or inblacklist
+func inList(d connData, list map[string]bool) bool {
+	if list[d.saslUsername] ||
+		list[d.sender] ||
+		list[d.clientAddress] {
 		return true
 	}
 	return false
@@ -311,7 +304,7 @@ func blacklisted(d connData) bool {
 
 // dbClean delete 7 days old entries in db every 24h.
 func dbClean(db *sql.DB) {
-	table, err := sanitizeSql(cfg["policy_table"])
+	table, err := sanitize(cfg["policy_table"])
 	if err != nil {
 		log.Fatal(err)
 	}
