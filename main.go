@@ -202,7 +202,7 @@ func policyVerify(x connData, db *sql.DB) string {
 		return "HOLD blacklisted"
 
 	case inList(x, inwhitelist):
-		mylog(fmt.Sprintf("skipping whitelisted user (OUTSIDE OFFICE HOURS): %s/%s/%s/%s",
+		mylog(fmt.Sprintf("skipping whitelisted user: %s/%s/%s/%s",
 			x.saslUsername, x.sender, x.clientAddress,
 			x.recipientCount), "Info")
 		return "DUNNO"
