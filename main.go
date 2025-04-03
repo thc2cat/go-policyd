@@ -51,7 +51,7 @@ var (
 
 const (
 	syslogtag = "policyd"
-	Version   = "go-policyd-v0.9"
+	Version   = "go-policyd-v0.91"
 	cfgfile   = "/etc/postfix/" + syslogtag + ".cfg"
 )
 
