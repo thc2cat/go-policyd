@@ -32,6 +32,8 @@ Using a centralized database, it may be used for multiple authenticated postfix 
 
 Using this projects we successfully reduced our spam volume during phishing campaigns from 60.000 users spammed to 1500 per day.
 
+![docs/Go-Policyd.png](docs/Go-Policyd.png)
+
 ## Main features
 
   ![accept.png](docs/accept.png) Quota of total recipients by day for an authenticated sender.
