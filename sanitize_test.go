@@ -59,7 +59,7 @@ func Test_sanitizeByType(t *testing.T) {
 	}{
 		{"numeric", intregexp, "1234567890", false},
 		{"alphanum", loginName, "1234567890abcdEFG", false},
-		{"email", mailregexp, "machin@truc-autre.com", false},
+		{"email", mailregexp, "noreply+machin@truc-autre.com", false},
 		{"ip", ipregexp, "127.0.0.10", false},
 		{"file", fileName, "/etc/postfix/go-policyd.cfg", false},
 		// TODO: Add test cases.

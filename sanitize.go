@@ -16,7 +16,7 @@ var (
 	loginName  = sanitRxp{"Login", regexp.MustCompile(`^[a-zA-Z0-9_@\.\-]+$`)}
 	ipregexp   = sanitRxp{"IP", regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`)}
 	intregexp  = sanitRxp{"Int", regexp.MustCompile(`^([0-9]+)$`)}
-	mailregexp = sanitRxp{"Mail", regexp.MustCompile(`^[a-zA-Z0-9_\.\-]+@[a-zA-Z0-9_\.\-]+$`)}
+	mailregexp = sanitRxp{"Mail", regexp.MustCompile(`^[a-zA-Z0-9_\.\-\+]+@[a-zA-Z0-9_\.\-]+$`)}
 )
 
 func sanitize(s string) (string, error) {
